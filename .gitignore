@@ -21,3 +21,8 @@ Thumbs.db
 
 # ---- 根目录的一次性脚本（写 README 等用的）----
 /_*.py
+
+# ---- 根目录临时文本/图片（commit message 等）----
+/_*.txt
+/_*.json
+/_*.png
