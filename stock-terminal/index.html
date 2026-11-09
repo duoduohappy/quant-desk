@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>赛博行情终端 · CYBER QUOTE</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/echarts.min.js"></script>
+<style>
+  :root{
+    --bg:#05070d; --panel:#0b1018; --line:#1b2432;
+    --txt:#d7e0ea; --dim:#7b8a9c;
+    --up:#f6465d; --down:#2ebd85;
+    --cyan:#00e5ff; --magenta:#ff2e88; --amber:#ffd166;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(0,229,255,.10), transparent 60%),
+      radial-gradient(900px 500px at 90% 0%, rgba(255,46,136,.10), transparent 60%),
+      var(--bg);
+    color:var(--txt);
+    font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+    min-height:100vh;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 18px 40px}
+  .top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+  .logo{display:flex;align-items:center;gap:10px}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan)}
+  .title{font-size:15px;letter-spacing:.22em;color:var(--cyan);font-weight:600}
+  .sub{font-size:11px;color:var(--dim);letter-spacing:.12em}
+  .search{margin-left:auto;display:flex;gap:8px}
+  input#code{
+    width:220px;padding:10px 12px;border-radius:8px;border:1px solid var(--line);
+    background:#080c14;color:var(--txt);font-family:Consolas,monospace;font-size:14px;
+    outline:none;transition:.2s;
+  }
+  input#code:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(0,229,255,.12)}
+  button{
+    padding:10px 18px;border-radius:8px;border:1px solid rgba(0,229,255,.5);
+    background:linear-gradient(180deg,rgba(0,229,255,.18),rgba(0,229,255,.05));
+    color:#c9f7ff;font-size:14px;cursor:pointer;letter-spacing:.06em;transition:.2s;
+  }
+  button:hover{background:rgba(0,229,255,.28);box-shadow:0 0 16px rgba(0,229,255,.25)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+  .chip{
+    font-size:12px;padding:5px 10px;border-radius:99px;cursor:pointer;
+    border:1px solid var(--line);color:var(--dim);background:#080c14;transition:.2s;
+  }
+  .chip:hover{color:var(--cyan);border-color:rgba(0,229,255,.45)}
+
+  .panel{
+    background:linear-gradient(180deg, rgba(13,19,29,.92), rgba(8,12,18,.92));
+    border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 0 0 1px rgba(0,229,255,.04) inset, 0 12px 40px rgba(0,0,0,.45);
+    overflow:hidden;
+  }
+  .quote{padding:18px 20px 14px;display:flex;gap:26px;align-items:center;flex-wrap:wrap}
+  .ident .nm{font-size:22px;font-weight:700;letter-spacing:.02em}
+  .ident .cd{font-family:Consolas,monospace;font-size:12px;color:var(--dim);margin-top:3px;letter-spacing:.1em}
+  .pricebox{display:flex;align-items:baseline;gap:14px}
+  .px{font-family:Consolas,monospace;font-size:38px;font-weight:700;line-height:1}
+  .chg{font-family:Consolas,monospace;font-size:16px}
+  .statgrid{
+    margin-left:auto;display:grid;grid-template-columns:repeat(4,minmax(96px,1fr));
+    gap:8px 22px;font-size:12px;
+  }
+  .stat{display:flex;gap:8px}
+  .stat .k{color:var(--dim)}
+  .stat .v{font-family:Consolas,monospace;color:#b9c7d6}
+  .up{color:var(--up)} .down{color:var(--down)}
+  .stamp{font-size:11px;color:var(--dim);width:100%;border-top:1px dashed var(--line);padding-top:10px;margin-top:2px;display:flex;gap:16px;flex-wrap:wrap}
+  .badge{color:var(--cyan)}
+
+  .tabs{display:flex;gap:6px;padding:10px 12px 0}
+  .tab{
+    padding:8px 16px;border-radius:8px 8px 0 0;cursor:pointer;font-size:13px;
+    color:var(--dim);border:1px solid transparent;border-bottom:none;letter-spacing:.06em;
+  }
+  .tab.on{color:var(--cyan);background:rgba(0,229,255,.08);border-color:rgba(0,229,255,.25)}
+  #chart{width:100%;height:620px}
+  .foot{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);padding:8px 16px 12px}
+  .err{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);
+       background:rgba(246,70,93,.12);border:1px solid rgba(246,70,93,.5);
+       color:#ffb3bd;padding:9px 16px;border-radius:8px;font-size:13px;display:none;z-index:9}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="logo"><span class="dot"></span>
+      <div>
+        <div class="title">CYBER QUOTE · 赛博行情终端</div>
+        <div class="sub">EASTMONEY DATA · 实时快照 / 分时 / 五日 / 日K / 周K / 月K</div>
+      </div>
+    </div>
+    <div class="search">
+      <input id="code" placeholder="输入代码，如 600519 / sh600519 / 000001.SZ" value="600519">
+      <button id="go">查询</button>
+    </div>
+  </div>
+
+  <div class="chips">
+    <span class="chip" data-code="600519">600519 贵州茅台</span>
+    <span class="chip" data-code="000001">000001 平安银行</span>
+    <span class="chip" data-code="300750">300750 宁德时代</span>
+    <span class="chip" data-code="601318">601318 中国平安</span>
+    <span class="chip" data-code="sh000001">sh000001 上证指数</span>
+    <span class="chip" data-code="688981">688981 中芯国际</span>
+  </div>
+
+  <div class="panel">
+    <div class="quote">
+      <div class="ident">
+        <div class="nm" id="q-name">—</div>
+        <div class="cd" id="q-code">—</div>
+      </div>
+      <div class="pricebox">
+        <span class="px" id="q-price">—</span>
+        <span class="chg" id="q-chg">—</span>
+      </div>
+      <div class="statgrid" id="q-stats"></div>
+      <div class="stamp">
+        <span>数据源 <span class="badge">东方财富公开接口</span></span>
+        <span>更新 <span class="badge" id="q-time">—</span></span>
+        <span id="q-session">—</span>
+      </div>
+    </div>
+
+    <div class="tabs" id="tabs">
+      <div class="tab on" data-tab="minute">分时</div>
+      <div class="tab" data-tab="five">五日</div>
+      <div class="tab" data-tab="day">日K</div>
+      <div class="tab" data-tab="week">周K</div>
+      <div class="tab" data-tab="month">月K</div>
+    </div>
+    <div id="chart"></div>
+    <div class="foot">
+      <span id="foot-left">—</span>
+      <span>红涨绿跌 · 前复权 · 数据仅供参考，不构成投资建议</span>
+    </div>
+  </div>
+</div>
+<div class="err" id="err"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const chart = echarts.init($('chart'), null, {renderer:'canvas'});
+const UP='#f6465d', DOWN='#2ebd85', CYAN='#00e5ff', AMBER='#ffd166', DIM='#7b8a9c';
+
+const state = {code:'600519', tab:'minute', quote:null, qTimer:null, cTimer:null, last:0};
+
+function toast(msg){
+  const e = $('err'); e.textContent = msg; e.style.display='block';
+  clearTimeout(toast._t); toast._t = setTimeout(()=>e.style.display='none', 3200);
+}
+
+async function api(path){
+  const r = await fetch(path, {cache:'no-store'});
+  let j = {};
+  try{ j = await r.json(); }catch(_){ }
+  if(!r.ok) throw new Error(j.error || ('请求失败 '+r.status));
+  return j;
+}
+
+const fmt = (v, d=2) => (v===null||v===undefined||isNaN(v)) ? '—' : Number(v).toFixed(d);
+const fmtBig = v => {
+  if(v===null||v===undefined||isNaN(v)) return '—';
+  const n = Number(v);
+  if(n >= 1e12) return (n/1e12).toFixed(2)+'万亿';
+  if(n >= 1e8)  return (n/1e8).toFixed(2)+'亿';
+  if(n >= 1e4)  return (n/1e4).toFixed(2)+'万';
+  return n.toFixed(0);
+};
+
+function sessionLabel(){
+  const d = new Date(); const day = d.getDay();
+  const hm = d.getHours()*100 + d.getMinutes();
+  const trading = (day>=1 && day<=5) && ((hm>=930 && hm<=1130) || (hm>=1300 && hm<=1500));
+  return trading ? '交易中 · 实时刷新' : '非交易时段 · 显示最近交易日';
+}
+
+/* ---------------- 头部 ---------------- */
+function renderQuote(q){
+  state.quote = q;
+  $('q-name').textContent = q.name || '—';
+  $('q-code').textContent = (q.code||'') + ' · ' + (q.secid||'');
+  const up = (q.pct||0) >= 0;
+  const cls = up ? 'up' : 'down';
+  $('q-price').textContent = fmt(q.price, 2);
+  $('q-price').className = 'px '+cls;
+  const arrow = up ? '▲' : '▼';
+  $('q-chg').innerHTML = `<span class="${cls}">${arrow} ${fmt(q.change,2)} &nbsp; ${up?'+':''}${fmt(q.pct,2)}%</span>`;
+
+  $('q-stats').innerHTML = [
+    ['今开', fmt(q.open)], ['最高', fmt(q.high)],
+    ['最低', fmt(q.low)], ['昨收', fmt(q.preClose)],
+    ['成交量', fmtBig(q.volume)+'手'], ['成交额', fmtBig(q.amount)],
+    ['换手率', (q.turnover==null?'—':fmt(q.turnover)+'%')], ['量比', q.volumeRatio==null?'—':fmt(q.volumeRatio)],
+    ['总市值', fmtBig(q.mcap)], ['流通值', fmtBig(q.floatMcap)],
+    ['市盈率', fmt(q.pe)], ['市净率', fmt(q.pb)],
+  ].map(([k,v])=>`<div class="stat"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+
+  $('q-time').textContent = q.updated || '—';
+  $('q-session').textContent = sessionLabel();
+}
+
+async function loadQuote(){
+  try{
+    renderQuote(await api('/api/quote?code='+encodeURIComponent(state.code)));
+  }catch(e){ toast(e.message); }
+}
+
+/* ---------------- 通用 ---------------- */
+function baseGrid(withVolume){
+  if(!withVolume) return [{left:62,right:26,top:18,bottom:64}];
+  return [
+    {left:62,right:26,top:18,height:'58%'},
+    {left:62,right:26,top:'74%',height:'14%'}
+  ];
+}
+
+function axisStyle(){
+  return {
+    axisLine:{lineStyle:{color:'#1b2432'}},
+    axisLabel:{color:DIM,fontSize:11,fontFamily:'Consolas,monospace'},
+    splitLine:{lineStyle:{color:'rgba(27,36,50,.65)'}},
+  };
+}
+
+/* ---------------- 分时 / 五日 ---------------- */
+function buildMinuteOption(m, five){
+  const days = m.days || [];
+  const labels = [], prices = [], avgs = [], vols = [], dayStart = [];
+  let n = 0;
+  days.forEach(d=>{
+    dayStart.push(n);
+    d.points.forEach(p=>{
+      labels.push(p[0]); prices.push(p[1]); avgs.push(p[2]); vols.push(p[3]); n++;
+    });
+  });
+
+  const pre = m.preClose || prices[0];
+  const up = prices[prices.length-1] >= pre;
+  const mainColor = up ? UP : DOWN;
+  const pad = Math.max(...prices, pre) - Math.min(...prices, pre) || pre*0.01;
+
+  const volColors = vols.map((v,i)=>{
+    if(i===0) return DIM;
+    return prices[i] >= prices[i-1] ? UP : DOWN;
+  });
+
+  return {
+    animationDuration: 300,
+    backgroundColor:'transparent',
+    tooltip:{
+      trigger:'axis', axisPointer:{type:'cross', lineStyle:{color:'rgba(0,229,255,.35)'}},
+      backgroundColor:'rgba(8,12,20,.94)', borderColor:'rgba(0,229,255,.4)',
+      textStyle:{color:'#d7e0ea',fontSize:12},
+      formatter: ps => {
+        const p = ps[0]; const i = p.dataIndex;
+        const d = five ? Math.max(...dayStart.filter(x=>x<=i)) : 0;
+        const day = days[five ? dayStart.filter(x=>x<=i).length-1 : 0] || {};
+        const sign = prices[i] >= pre ? '+' : '';
+        const pctv = ((prices[i]-pre)/pre*100);
+        return `<div style="font-family:Consolas,monospace">
+          ${five?day.date+' ':''}${labels[i]}<br>
+          价格 <b style="color:${mainColor}">${prices[i].toFixed(2)}</b>
+          （<span style="color:${pctv>=0?UP:DOWN}">${sign}${pctv.toFixed(2)}%</span>）<br>
+          均价 ${avgs[i].toFixed(3)}<br>成交量 ${vols[i].toFixed(0)} 手</div>`;
+      }
+    },
+    grid:[{left:64,right:28,top:22,height:'58%'},{left:64,right:28,top:'72%',height:'16%'}],
+    axisPointer:{link:[{xAxisIndex:'all'}]},
+    xAxis:[
+      {type:'category',data:labels,gridIndex:0,boundaryGap:false,
+       axisLine:{lineStyle:{color:'#1b2432'}},axisTick:{show:false},
+       axisLabel:{interval: five? Math.floor(labels.length/10) : 29, color:DIM,fontSize:11,
+         formatter:(v,idx)=>{
+           if(five){
+             const dIdx = dayStart.filter(x=>x<=idx).length-1;
+             const day = days[dIdx];
+             const isOpen = idx===dayStart[dIdx];
+             return isOpen ? ((day?day.date.slice(5):'')+'\n'+v) : v;
+           }
+           return v==='09:30'||v==='11:30'||v==='13:00'||v==='15:00' ? v : '';
+         }},
+       splitLine:{show:false}},
+      {type:'category',data:labels,gridIndex:1,boundaryGap:false,
+       axisLine:{lineStyle:{color:'#1b2432'}},axisTick:{show:false},
+       axisLabel:{show:false},splitLine:{show:false}}
+    ],
+    yAxis:[
+      {scale:true,gridIndex:0,min: Math.min(...prices,pre)-pad*0.12, max: Math.max(...prices,pre)+pad*0.12,
+       axisLine:{show:false},axisTick:{show:false},
+       axisLabel:{color:DIM,fontSize:11,fontFamily:'Consolas,monospace',formatter:v=>v.toFixed(2)},
+       splitLine:{lineStyle:{color:'rgba(27,36,50,.65)'}},
+       axisPointer:{label:{backgroundColor:'rgba(0,229,255,.25)',color:'#dffbff'}}},
+      {gridIndex:1,splitNumber:2,axisLine:{show:false},axisTick:{show:false},
+       axisLabel:{color:DIM,fontSize:10,formatter:v=>fmtBig(v)},
+       splitLine:{show:false}}
+    ],
+    series:[
+      {name:'价格',type:'line',data:prices,gridIndex:0,symbol:'none',smooth:false,
+       lineStyle:{color:mainColor,width:1.6},
+       areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[
+         {offset:0,color:up?'rgba(246,70,93,.45)':'rgba(46,189,133,.45)'},
+         {offset:1,color:'rgba(5,7,13,0)'}])},
+       markLine:{silent:true,symbol:'none',
+         lineStyle:{color:'rgba(255,209,102,.6)',type:'dashed',width:1},
+         label:{color:AMBER,fontSize:10,formatter:'昨收 {c}',position:'insideEndTop'},
+         data:[{yAxis:pre}]}
+      },
+      {name:'均价',type:'line',data:avgs,gridIndex:0,symbol:'none',smooth:true,
+       lineStyle:{color:AMBER,width:1.1,type:'solid',opacity:.85}},
+      {name:'成交量',type:'bar',data:vols.map((v,i)=>({value:v,itemStyle:{color:
+         (i===0?DIM:(prices[i]>=prices[i-1]?UP:DOWN))+'99'}})),
+       gridIndex:1,barWidth:'60%'}
+    ],
+    dataZoom:[]
+  };
+}
+
+/* ---------------- K 线 ---------------- */
+function ma(arr, n){
+  const out = [];
+  for(let i=0;i<arr.length;i++){
+    if(i<n-1){ out.push(null); continue; }
+    let s=0; for(let k=i-n+1;k<=i;k++) s+=arr[k];
+    out.push(+(s/n).toFixed(3));
+  }
+  return out;
+}
+
+function buildKlineOption(k){
+  const it = k.items;
+  const dates = it.map(x=>x.d);
+  const ohlc = it.map(x=>[x.o, x.c, x.l, x.h]);
+  const closes = it.map(x=>x.c);
+  const vols = it.map((x,i)=>({value:x.v,itemStyle:{color:(x.c>=x.o?UP:DOWN)+'99'}}));
+  const start = Math.max(0, 100 - (90/Math.max(it.length,1))*100);
+
+  return {
+    animation:false,
+    backgroundColor:'transparent',
+    tooltip:{
+      trigger:'axis', axisPointer:{type:'cross', lineStyle:{color:'rgba(0,229,255,.35)'}},
+      backgroundColor:'rgba(8,12,20,.94)', borderColor:'rgba(0,229,255,.4)',
+      textStyle:{color:'#d7e0ea',fontSize:12},
+      formatter: ps=>{
+        const i = ps[0].dataIndex; const x = it[i];
+        const c = x.c>=x.o ? UP : DOWN;
+        return `<div style="font-family:Consolas,monospace;line-height:1.7">
+          ${x.d}<br>
+          开 ${x.o.toFixed(2)}　高 ${x.h.toFixed(2)}<br>
+          低 ${x.l.toFixed(2)}　收 <b style="color:${c}">${x.c.toFixed(2)}</b><br>
+          涨跌 <span style="color:${c}">${x.pct==null?'—':(x.pct>0?'+':'')+x.pct.toFixed(2)+'%'}</span>
+          　振幅 ${x.amp==null?'—':x.amp.toFixed(2)+'%'}<br>
+          成交量 ${fmtBig(x.v)}手　成交额 ${fmtBig(x.a)}<br>
+          换手 ${x.turn==null?'—':x.turn.toFixed(2)+'%'}</div>`;
+      }
+    },
+    grid:[{left:64,right:26,top:22,height:'54%'},{left:64,right:26,top:'70%',height:'15%'}],
+    axisPointer:{link:[{xAxisIndex:'all'}]},
+    xAxis:[
+      {type:'category',data:dates,gridIndex:0,axisLine:{lineStyle:{color:'#1b2432'}},
+       axisTick:{show:false},axisLabel:{show:false},splitLine:{show:false},
+       axisPointer:{label:{show:false}}},
+      {type:'category',data:dates,gridIndex:1,axisLine:{lineStyle:{color:'#1b2432'}},
+       axisTick:{show:false},splitLine:{show:false},
+       axisLabel:{color:DIM,fontSize:11,fontFamily:'Consolas,monospace',
+         formatter:v=>v.slice(5)},
+       axisPointer:{label:{show:false}}}
+    ],
+    yAxis:[
+      {scale:true,gridIndex:0,axisLine:{show:false},axisTick:{show:false},
+       axisLabel:{color:DIM,fontSize:11,fontFamily:'Consolas,monospace',formatter:v=>v.toFixed(2)},
+       splitLine:{lineStyle:{color:'rgba(27,36,50,.65)'}},
+       axisPointer:{label:{backgroundColor:'rgba(0,229,255,.25)',color:'#dffbff'}}},
+      {gridIndex:1,splitNumber:2,axisLine:{show:false},axisTick:{show:false},
+       axisLabel:{color:DIM,fontSize:10,formatter:v=>fmtBig(v)},splitLine:{show:false}}
+    ],
+    dataZoom:[
+      {type:'inside',xAxisIndex:[0,1],start:start,end:100},
+      {type:'slider',xAxisIndex:[0,1],start:start,end:100,height:16,bottom:14,
+       borderColor:'transparent',backgroundColor:'rgba(11,16,24,.9)',
+       fillerColor:'rgba(0,229,255,.14)',handleStyle:{color:CYAN},
+       textStyle:{color:DIM,fontSize:10},dataBackground:{lineStyle:{color:'#2a3646'},
+         areaStyle:{color:'rgba(42,54,70,.4)'}}}
+    ],
+    series:[
+      {name:'K线',type:'candlestick',data:ohlc,gridIndex:0,
+       itemStyle:{color:UP,color0:DOWN,borderColor:UP,borderColor0:DOWN}},
+      {name:'MA5',type:'line',data:ma(closes,5),gridIndex:0,symbol:'none',
+       lineStyle:{width:1,color:'#ffd166',opacity:.9}},
+      {name:'MA10',type:'line',data:ma(closes,10),gridIndex:0,symbol:'none',
+       lineStyle:{width:1,color:'#7ee787',opacity:.85}},
+      {name:'MA20',type:'line',data:ma(closes,20),gridIndex:0,symbol:'none',
+       lineStyle:{width:1,color:'#a78bfa',opacity:.85}},
+      {name:'成交量',type:'bar',data:vols,gridIndex:1,barWidth:'62%'}
+    ]
+  };
+}
+
+/* ---------------- 调度 ---------------- */
+async function renderChart(){
+  const code = state.code;
+  try{
+    if(state.tab==='minute' || state.tab==='five'){
+      const m = await api(`/api/minute?code=${encodeURIComponent(code)}&days=${state.tab==='five'?5:1}`);
+      if(code !== state.code) return;
+      chart.setOption(buildMinuteOption(m, state.tab==='five'), true);
+      const days = m.days.length, pts = m.days.reduce((s,d)=>s+d.points.length,0);
+      $('foot-left').textContent = `${m.name} ${m.code} · ${state.tab==='five'?'五日':''}分时 · ${days} 个交易日 / ${pts} 个数据点`;
+      document.title = `${m.name} ${m.code} · 赛博行情终端`;
+    }else{
+      const k = await api(`/api/kline?code=${encodeURIComponent(code)}&period=${state.tab}`);
+      if(code !== state.code) return;
+      chart.setOption(buildKlineOption(k), true);
+      const nm = {day:'日K',week:'周K',month:'月K'}[state.tab];
+      $('foot-left').textContent = `${k.name} ${k.code} · ${nm} · ${k.items.length} 根（前复权）`;
+      document.title = `${k.name} ${k.code} · 赛博行情终端`;
+    }
+  }catch(e){
+    toast(e.message);
+    $('foot-left').textContent = '加载失败：'+e.message;
+  }
+}
+
+function startTimers(){
+  clearInterval(state.qTimer); clearInterval(state.cTimer);
+  loadQuote();
+  state.qTimer = setInterval(()=>{ loadQuote(); }, 5000);
+  state.cTimer = setInterval(()=>{ renderChart(); }, 30000);
+}
+
+function query(code){
+  if(!code) return;
+  state.code = code.trim();
+  $('code').value = state.code;
+  renderChart(); loadQuote();
+  $('q-name').textContent='加载中…'; $('q-price').textContent='—';
+}
+
+$('go').onclick = ()=> query($('code').value);
+$('code').addEventListener('keydown', e=>{ if(e.key==='Enter') query($('code').value); });
+document.querySelectorAll('.chip').forEach(c=>{
+  c.onclick = ()=> query(c.dataset.code);
+});
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick = ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+    t.classList.add('on');
+    state.tab = t.dataset.tab;
+    renderChart();
+  };
+});
+window.addEventListener('resize', ()=> chart.resize());
+startTimers();
+</script>
+</body>
+</html>

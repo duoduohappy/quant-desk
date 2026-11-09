@@ -1,0 +1,23 @@
+# ---- 运行态数据：每跑一轮就变，公开仓库不放 ----
+stock-terminal/desk_state.json
+stock-terminal/desk_audit.jsonl
+stock-terminal/desk_labels.jsonl
+stock-terminal/desk_params.json
+stock-terminal/desk_params.next.json
+stock-terminal/desk_params.d/
+
+# ---- 一次性排查/修复/验收脚本与中间产物（_ 开头）----
+stock-terminal/_*
+
+# ---- 视频抽帧素材（约 116 MB）----
+frames/
+
+# ---- 通用 ----
+__pycache__/
+*.py[cod]
+.DS_Store
+Thumbs.db
+*.log
+
+# ---- 根目录的一次性脚本（写 README 等用的）----
+/_*.py

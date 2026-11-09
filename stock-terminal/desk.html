@@ -1,0 +1,2496 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>CYBER DESK · 赛博交易室</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/echarts.min.js"></script>
+<style>
+  :root{
+    --bg:#05070d; --panel:#0a0f17; --card:#0b111a; --line:#1b2432;
+    --txt:#d7e0ea; --dim:#69788a;
+    --up:#f6465d; --down:#2ebd85; --cyan:#00e5ff; --magenta:#ff2e88;
+    --amber:#ffd166; --violet:#a78bfa;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;color:var(--txt);background:
+      radial-gradient(1100px 520px at 12% -12%, rgba(0,229,255,.10), transparent 62%),
+      radial-gradient(900px 460px at 92% -6%, rgba(255,46,136,.10), transparent 62%),
+      var(--bg);
+    font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+    min-height:100vh;font-size:13px;
+  }
+  .wrap{max-width:1360px;margin:0 auto;padding:16px 18px 34px}
+  /* ---------- 顶栏 ---------- */
+  .bar{
+    display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+    padding:12px 16px;border:1px solid var(--line);border-radius:12px;
+    background:linear-gradient(180deg,rgba(13,19,29,.95),rgba(7,11,17,.95));
+    box-shadow:0 0 24px rgba(0,229,255,.06);
+  }
+  .brand{display:flex;align-items:center;gap:10px}
+  .pulse{width:9px;height:9px;border-radius:50%;background:var(--cyan);
+    box-shadow:0 0 12px var(--cyan);animation:pl 2s infinite}
+  @keyframes pl{0%,100%{opacity:1}50%{opacity:.25}}
+  .brand h1{margin:0;font-size:15px;letter-spacing:.2em;color:var(--cyan);font-weight:700}
+  .brand .s{font-size:10px;letter-spacing:.16em;color:var(--dim)}
+  .mode{font-size:10px;padding:3px 8px;border-radius:4px;letter-spacing:.12em;
+    border:1px solid rgba(255,46,136,.45);color:var(--magenta);background:rgba(255,46,136,.08)}
+  .kpis{display:flex;gap:26px;margin-left:auto;align-items:center}
+  .kpi .k{font-size:10px;color:var(--dim);letter-spacing:.1em;margin-bottom:2px}
+  .kpi .v{font-family:Consolas,monospace;font-size:22px;font-weight:700}
+  .btns{display:flex;gap:8px;margin-left:18px}
+  button{
+    padding:8px 14px;border-radius:7px;cursor:pointer;font-size:12px;letter-spacing:.04em;
+    border:1px solid rgba(0,229,255,.42);color:#c9f7ff;
+    background:linear-gradient(180deg,rgba(0,229,255,.16),rgba(0,229,255,.04));transition:.2s;
+  }
+  button:hover{background:rgba(0,229,255,.26);box-shadow:0 0 14px rgba(0,229,255,.22)}
+  button.danger{border-color:rgba(246,70,93,.5);color:#ffb3bd;
+    background:linear-gradient(180deg,rgba(246,70,93,.16),rgba(246,70,93,.04))}
+  button.ghost{border-color:var(--line);color:var(--dim);background:#080c14}
+
+  /* ---------- 8 工位 ---------- */
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+  .st{
+    position:relative;border:1px solid var(--line);border-radius:10px;padding:10px 12px 11px;
+    background:linear-gradient(180deg,#0c121b,#080d14);overflow:hidden;transition:.35s;
+    cursor:pointer;min-height:112px;
+  }
+  .st:hover{border-color:rgba(0,229,255,.35);transform:translateY(-1px)}
+  .st::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(120px 60px at 15% 0%,rgba(0,229,255,.12),transparent 70%);
+    opacity:0;transition:.4s}
+  .st.working::after{opacity:1}
+  .st.working{border-color:rgba(0,229,255,.45);box-shadow:0 0 18px rgba(0,229,255,.12)}
+  .st.alert{border-color:rgba(246,70,93,.5);box-shadow:0 0 18px rgba(246,70,93,.14)}
+  .st.alert::after{background:radial-gradient(120px 60px at 15% 0%,rgba(246,70,93,.16),transparent 70%);opacity:1}
+  .st.hdr{display:flex;align-items:center;gap:8px}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex:0 0 auto}
+  .st.working .dot{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+  .st.alert .dot{background:var(--up);box-shadow:0 0 8px var(--up)}
+  .nm{font-weight:700;letter-spacing:.08em;font-size:12.5px}
+  .en{font-size:9.5px;color:var(--dim);letter-spacing:.06em;margin-top:2px}
+  .sc{margin-left:auto;font-family:Consolas,monospace;font-size:17px;font-weight:700;color:var(--cyan)}
+  .sc.off{color:var(--dim);font-size:12px}
+  .barwrap{height:3px;border-radius:2px;background:#131b26;margin:8px 0 7px;overflow:hidden}
+  .barfill{height:100%;width:0;border-radius:2px;
+    background:linear-gradient(90deg,var(--cyan),var(--magenta));transition:width .6s ease}
+  .msg{font-size:11px;color:#8fa0b3;line-height:1.5;min-height:32px}
+
+  /* ---------- handoff 流水线 ---------- */
+  .chain{
+    position:relative;display:flex;align-items:center;justify-content:space-between;
+    margin-top:10px;padding:8px 22px;border:1px solid var(--line);border-radius:10px;
+    background:linear-gradient(90deg,rgba(0,229,255,.05),rgba(255,46,136,.05));
+    overflow:hidden;
+  }
+  .chain::before{
+    content:"";position:absolute;left:0;right:0;top:50%;height:1px;
+    background:linear-gradient(90deg,transparent,var(--cyan),var(--magenta),transparent);
+    background-size:200% 100%;animation:flow 3s linear infinite;opacity:.55;
+  }
+  @keyframes flow{from{background-position:0% 0}to{background-position:-200% 0}}
+  .node{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .node .b{width:8px;height:8px;border-radius:50%;background:#16202c;
+    border:1px solid #2a3a4c;transition:.3s}
+  .node .l{font-size:9px;letter-spacing:.1em;color:#4f6076}
+  .node.on .b{background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 12px var(--cyan)}
+  .node.on .l{color:var(--cyan)}
+  .node.done .b{background:rgba(46,189,133,.85);border-color:rgba(46,189,133,.85)}
+  .node.done .l{color:#7fd6b2}
+  .node.bad .b{background:var(--up);border-color:var(--up);box-shadow:0 0 12px var(--up)}
+  .node.bad .l{color:#ff9aa8}
+
+  /* ---------- 赛博蜘蛛 ---------- */
+  .webwrap{position:relative;height:300px;overflow:hidden;
+    background:
+      radial-gradient(460px 200px at 50% 46%, rgba(255,60,90,.07), transparent 70%),
+      radial-gradient(620px 280px at 50% 50%, rgba(0,229,255,.05), transparent 74%);}
+  #spiderCanvas{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;
+    z-index:0}
+
+  /* 代码输入：想直接看哪只票就打代码 */
+  .codes{display:flex;align-items:center;gap:6px;margin-right:4px}
+  .codes input{width:118px;background:rgba(9,16,26,.9);border:1px solid rgba(120,240,255,.28);
+    border-radius:6px;color:#d8f3ff;font-family:Consolas,monospace;font-size:12px;
+    padding:5px 8px;outline:none;letter-spacing:.08em}
+  .codes input::placeholder{color:#4a5d72;letter-spacing:.02em}
+  .codes input:focus{border-color:rgba(120,240,255,.7);box-shadow:0 0 0 2px rgba(120,240,255,.12)}
+
+  /* 工位小人的可点区域：叠在画出来的小人身上，点它看证据（不挡卡片本身的点击） */
+  #charbtns{position:fixed;inset:0;pointer-events:none;z-index:30}
+  .charbtn{position:fixed;width:30px;height:30px;border-radius:50%;pointer-events:auto;
+    cursor:pointer;border:1px solid transparent;transition:border-color .12s}
+  .charbtn:hover{border-color:rgba(120,240,255,.55);background:rgba(120,240,255,.07)}
+  #charpanel{position:fixed;z-index:60;width:300px;display:none;
+    background:rgba(6,14,26,.97);border:1px solid rgba(120,240,255,.45);border-radius:8px;
+    box-shadow:0 12px 34px rgba(0,0,0,.6);padding:10px 12px;font-size:11px;color:#b7c9d8}
+  #charpanel .cp-h{display:flex;justify-content:space-between;align-items:center;
+    font-family:Consolas,monospace;letter-spacing:.06em;color:#eaf6ff;margin-bottom:7px}
+  #charpanel .cp-h b{font-size:12px}
+  #charpanel .cp-h span{color:#63788c;cursor:pointer;padding:0 4px}
+  #charpanel .cp-s{margin-top:7px}
+  #charpanel .cp-k{color:#4f6376;font-size:10px;letter-spacing:.08em;margin-bottom:2px}
+  #charpanel .cp-v{color:#cfe0ee;line-height:1.5;word-break:break-all}
+
+  /* ---------- 主区 ---------- */
+  .main{display:grid;grid-template-columns:1.55fr 1fr;gap:12px;margin-top:12px}
+  .panel{border:1px solid var(--line);border-radius:12px;background:
+    linear-gradient(180deg,rgba(12,17,25,.96),rgba(8,12,18,.96));overflow:hidden}
+
+  /* ---------- 因子板：只摆证据，不做决定 ---------- */
+  .factors{margin-top:12px}
+  .fxbody{display:grid;grid-template-columns:1.05fr 1.05fr 1fr 1fr 1fr}
+  .fxcross{grid-column:1/-1;padding:7px 14px;border-top:1px solid rgba(27,36,50,.6);
+    font-size:10.5px;color:#ffb4be;line-height:1.6}
+  .fxcross.ok{border-top:1px solid rgba(27,36,50,.6);color:#7d8fa3}
+  /* VET 卡片上的六条硬闸门：从"通过 8/9 项"摊成看得见的六格 */
+  .vgates{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px}
+  .vg{font-size:9px;line-height:1.5;padding:1px 4px;border-radius:2px;
+    border:1px solid rgba(27,36,50,.9);color:#7d8fa3;font-family:Consolas,monospace}
+  .vg.ok{color:#5fe0a1;border-color:rgba(95,224,161,.35)}
+  .vg.bad{color:#ff7a8a;border-color:rgba(255,122,138,.5)}
+  .vg.unk{color:#ffd166;border-color:rgba(255,209,102,.35)}
+  .fxrow2{grid-template-columns:1fr 1fr;border-top:1px solid rgba(27,36,50,.6)}
+  .fxcell{padding:9px 14px;border-right:1px solid rgba(27,36,50,.6)}
+  .fxcell:last-child{border-right:0}
+  .fxcell h4{margin:0 0 5px;font-size:10.5px;letter-spacing:.12em;color:#8fe6ff;font-weight:500}
+  .fxrow{display:flex;justify-content:space-between;gap:10px;font-size:11px;line-height:1.9;
+    border-bottom:1px dashed rgba(27,36,50,.5)}
+  .fxrow .k{color:#61748a}
+  .fxrow .v{font-family:Consolas,monospace;color:#cfe0ee;white-space:nowrap}
+  .fxrow .v.ok{color:#5fe0a1}.fxrow .v.bad{color:#ff7a8a}.fxrow .v.warn{color:#ffd166}
+  .fxnote{font-size:10.5px;color:#7d8fa3;line-height:1.6;margin-top:6px}
+  .fxflag{display:inline-block;font-size:10px;padding:1px 6px;margin:0 4px 4px 0;
+    border-radius:3px;border:1px solid rgba(120,240,255,.35);color:#9fe9ff}
+  .fxloop{padding:7px 14px;border-top:1px solid rgba(27,36,50,.6);
+    font-family:Consolas,monospace;font-size:10.5px;color:#94a6ba;letter-spacing:.02em;line-height:1.75}
+  .fxloop b{color:#e8f2ff;font-weight:600}
+  .fxloop .sep{color:#3d4c5e;margin:0 7px}
+  .fxscan{padding:6px 14px;border-top:1px solid rgba(27,36,50,.6);
+    font-family:Consolas,monospace;font-size:10.5px;color:#7d8fa3;letter-spacing:.02em}
+  .ph{display:flex;align-items:center;gap:10px;padding:9px 13px;border-bottom:1px solid var(--line)}
+  .ph .t{font-size:11.5px;letter-spacing:.14em;color:var(--cyan)}
+  .ph .meta{margin-left:auto;font-size:10.5px;color:var(--dim);font-family:Consolas,monospace}
+  #chart{height:320px;width:100%}
+  .feed{height:320px;overflow-y:auto;padding:6px 12px;scrollbar-width:thin}
+  .feed::-webkit-scrollbar{width:6px}
+  .feed::-webkit-scrollbar-thumb{background:#1b2432;border-radius:3px}
+  .ev{display:flex;gap:8px;padding:5px 0;border-bottom:1px dashed rgba(27,36,50,.6);
+     animation:in .35s ease}
+  @keyframes in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .ev .t{font-family:Consolas,monospace;font-size:10.5px;color:#4f6076;flex:0 0 52px}
+  .ev .w{font-size:10px;letter-spacing:.06em;flex:0 0 62px;color:var(--cyan)}
+  .ev .x{font-size:11.5px;color:#a9b8c9;line-height:1.45}
+  .ev.ok .x{color:#9be7c4}
+  .ev.warn .x{color:#ffe08a}
+  .ev.alert .x{color:#ff9aa8;font-weight:600}
+
+  /* ---------- 底部 ---------- */
+  .bottom{display:grid;grid-template-columns:1.35fr 1fr;gap:12px;margin-top:12px}
+  table{width:100%;border-collapse:collapse;font-size:11.5px}
+  th{font-weight:500;color:var(--dim);text-align:left;padding:6px 8px;
+     border-bottom:1px solid var(--line);font-size:10.5px;letter-spacing:.08em}
+  td{padding:6px 8px;border-bottom:1px dashed rgba(27,36,50,.5);font-family:Consolas,monospace}
+  td.nm2{font-family:"Microsoft YaHei",sans-serif}
+  .tag{font-size:9.5px;padding:2px 6px;border-radius:3px;letter-spacing:.06em}
+  .tag.FILLED{color:var(--down);border:1px solid rgba(46,189,133,.4);background:rgba(46,189,133,.08)}
+  .tag.REJECTED{color:var(--up);border:1px solid rgba(246,70,93,.4);background:rgba(246,70,93,.08)}
+  .tag.PASSED{color:var(--amber);border:1px solid rgba(255,209,102,.35);background:rgba(255,209,102,.08)}
+  .tag.STAGED,.tag.APPROVED{color:var(--cyan);border:1px solid rgba(0,229,255,.35);background:rgba(0,229,255,.08)}
+  /* 同码去重后被取代的旧单：留痕但不给按钮，避免"看起来还能点" */
+  .tag.SUPERSEDED{color:#5d6d80;border:1px solid rgba(93,109,128,.35);text-decoration:line-through}
+  /* 批准前预览弹层（纸面模式也要"先看数再动手"） */
+  #apv{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;
+    background:rgba(6,9,14,.72)}
+  .apv-box{width:392px;background:#0d141c;border:1px solid rgba(0,229,255,.35);border-radius:4px;
+    box-shadow:0 18px 48px rgba(0,0,0,.6);padding:14px 16px;font-family:Consolas,monospace}
+  .apv-h{font-size:12px;letter-spacing:.1em;color:#8fe6ff;margin-bottom:10px}
+  .apv-body{font-size:11px;color:#9fb0c2}
+  .aprow{display:flex;justify-content:space-between;gap:12px;padding:3px 0;
+    border-bottom:1px dashed rgba(27,36,50,.75)}
+  .aprow b{color:#dfe9f5;font-weight:600}
+  .apv-warn{margin:9px 0 12px;font-size:10.5px;line-height:1.7}
+  .apv-warn .w{color:#ffb4be}
+  .apv-warn .ok{color:#5fe0a1}
+  .apv-btns{display:flex;justify-content:flex-end;gap:8px}
+  .apv-btns .primary{border-color:rgba(0,229,255,.6);color:#00e5ff}
+  .tag.DROP{color:var(--dim);border:1px solid var(--line)}
+  .empty{color:var(--dim);font-size:11.5px;padding:16px 12px}
+  .mini{font-size:10px;padding:2px 7px;border-radius:4px;cursor:pointer;
+    border:1px solid rgba(246,70,93,.4);color:#ffb3bd;background:transparent}
+  .tabline{display:flex;gap:4px;margin-left:auto}
+  .tl{font-size:10.5px;padding:4px 10px;border-radius:5px;cursor:pointer;color:var(--dim);
+     border:1px solid transparent}
+  .tl.on{color:var(--cyan);border-color:rgba(0,229,255,.3);background:rgba(0,229,255,.07)}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9;
+    background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.45);color:#c9f7ff;
+    padding:8px 16px;border-radius:8px;font-size:12px;display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar">
+    <div class="brand">
+      <span class="pulse"></span>
+      <div>
+        <h1>CYBER DESK</h1>
+        <div class="s">A-SHARE AGENT TRADING FLOOR</div>
+      </div>
+    </div>
+    <span class="mode" id="mode">PAPER MODE</span>
+    <div class="kpis">
+      <div class="kpi"><div class="k">权益 EQUITY</div><div class="v" id="k-eq">—</div></div>
+      <div class="kpi"><div class="k">今日 DAY P&amp;L</div><div class="v" id="k-day">—</div></div>
+      <div class="kpi"><div class="k">累计 TOTAL</div><div class="v" id="k-tot">—</div></div>
+      <div class="kpi"><div class="k">漏斗 FUNNEL</div><div class="v" id="k-fun" style="font-size:14px">—</div></div>
+      <div class="kpi"><div class="k">账本 LEDGER</div><div class="v" id="k-led" style="font-size:13px">—</div></div>
+      <div class="kpi"><div class="k">数据基准 ASOF</div><div class="v" id="k-asof" style="font-size:13px">—</div></div>
+    </div>
+    <div class="btns">
+      <div class="codes">
+        <input id="code-in" maxlength="6" inputmode="numeric" autocomplete="off" placeholder="代码 如 600744">
+        <button id="btn-code" class="ghost">看盘</button>
+      </div>
+      <button id="btn-run">跑一轮</button>
+      <button id="btn-halt" class="danger">STOP ALL</button>
+      <button id="btn-alert" class="ghost">告警演练</button>
+      <button id="btn-snd" class="ghost">音效</button>
+      <button id="btn-lines" class="ghost">装饰线 开</button>
+      <button id="btn-reset" class="ghost">重置</button>
+    </div>
+  </div>
+
+  <div class="grid" id="stations"></div>
+  <div class="chain" id="chain"></div>
+
+  <div class="main">
+    <div class="panel">
+      <div class="ph">
+        <span class="t">FLOOR · 分时监控</span>
+        <span class="meta" id="ch-meta">点击工位或线索切换标的</span>
+        <div class="tabline" id="ch-tabs">
+          <span class="tl on" data-t="minute">分时</span>
+          <span class="tl" data-t="d5">五日</span>
+          <span class="tl" data-t="day">日K</span>
+          <span class="tl" data-t="week">周K</span>
+          <span class="tl" data-t="month">月K</span>
+        </div>
+      </div>
+      <div id="chart"></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="t">EVENT STREAM · 事件流</span>
+        <span class="meta" id="ev-count">—</span></div>
+      <div class="feed" id="feed"></div>
+    </div>
+  </div>
+
+  <div class="panel factors">
+    <div class="ph">
+      <span class="t">FACTORS · 因子板（只摆证据，不做决定）</span>
+      <span class="meta" id="fx-meta">输入代码后展开</span>
+    </div>
+    <div class="fxbody" id="factor-body">
+      <div class="fxcell"><div class="fxnote">在顶部输入 6 位代码，或点线索行 → 这块按该票的真实K线算<br>
+      算不出来的项一律写"不可判"，不猜、不补默认值。</div></div>
+    </div>
+    <div class="fxbody fxrow2">
+      <div class="fxcell" id="fx-plan"><h4>G · 风险与仓位</h4>
+        <div class="fxnote">输入代码后算：三约束取最小、双边费用、回本要涨多少</div></div>
+      <div class="fxcell" id="fx-verdict"><h4>H · 证据化判决（首条线索）</h4>
+        <div class="fxnote">逐条摆出来，含"不可判"——缺失不是通过</div></div>
+    </div>
+    <div class="fxloop" id="fx-loop">闭环 —</div>
+    <div class="fxscan" id="fx-scan">巡检 — · 脚落在哪块就算读了一次</div>
+  </div>
+
+  <div class="bottom">
+    <div class="panel">
+      <div class="ph"><span class="t">POSITIONS · 持仓</span>
+        <span class="meta" id="pos-meta">—</span></div>
+      <div id="positions"></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="t">LEADS · 线索流水</span>
+        <span class="meta" id="lead-meta">—</span></div>
+      <div id="leads" style="max-height:260px;overflow:auto"></div>
+    </div>
+  </div>
+</div>
+<canvas id="spiderCanvas"></canvas>
+<div id="sp-tele" style="display:none"></div>
+<div class="toast" id="toast"></div>
+
+<!-- 批准前预览：人点"批准"之前先看见股数/成本/止损/占用现金/风险 -->
+<div id="apv">
+  <div class="apv-box">
+    <div class="apv-h">批准前确认 · <span id="apv-id"></span></div>
+    <div class="apv-body" id="apv-body"></div>
+    <div class="apv-warn" id="apv-warn"></div>
+    <div class="apv-btns">
+      <button class="mini" id="apv-cancel">取消</button>
+      <button class="mini primary" id="apv-ok">确认批准</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const chart = echarts.init($('chart'));
+const UP='#f6465d', DOWN='#2ebd85', CYAN='#00e5ff', AMBER='#ffd166', DIM='#69788a';
+let S = null, curCode = null, curTab = 'minute', lastEv = 0;
+
+const fmt = (v,d=2)=> (v===null||v===undefined||isNaN(v))?'—':Number(v).toFixed(d);
+const big = v => { if(v==null||isNaN(v)) return '—'; const n=+v;
+  if(n>=1e8) return (n/1e8).toFixed(2)+'亿'; if(n>=1e4) return (n/1e4).toFixed(2)+'万'; return n.toFixed(0); };
+const money = v => (v==null||isNaN(v))?'—':(v>=0?'+':'')+Number(v).toFixed(0);
+
+function toast(m){ const e=$('toast'); e.textContent=m; e.style.display='block';
+  clearTimeout(toast._t); toast._t=setTimeout(()=>e.style.display='none',3000); }
+
+async function api(p, opt){ const r=await fetch(p, Object.assign({cache:'no-store'}, opt||{}));
+  const j=await r.json(); if(!r.ok) throw new Error(j.error||('HTTP '+r.status)); return j; }
+
+/* ---------------- 工位 ---------------- */
+function renderStations(){
+  const meta = S.station_meta || [];
+  const html = meta.map(m=>{
+    const s = S.stations[m.id] || {};
+    const st = s.state || 'idle';
+    const score = (s.score===null||s.score===undefined)?null:s.score;
+    const scTxt = score===null? '<span class="sc off">—</span>' :
+      `<span class="sc">${Number(score).toFixed(2)}</span>`;
+    const met = Object.entries(s.metrics||{}).slice(0,4).map(([k,v])=>
+      `<span style="color:#5d6d80">${k}</span> <span style="color:#9fb0c2">${v}</span>`).join('　');
+    // VET 工位：把 6 条硬闸门摊开（st/suspended/liquidity/age/position/overheat）
+    // 取自首条线索的 vet.evidence —— 和 H 面板同一份证据，不在前端另算一遍
+    let gates = '';
+    if(m.id === 'VET'){
+      const l = (S.leads || [])[0];
+      const ev = (l && l.vet && l.vet.evidence) || [];
+      const SHORT = {st:'ST', suspended:'停牌', liquidity:'成交额', age:'上市', position:'位置', overheat:'过热',
+                     cross_t:'交叉', plan:'仓位'};
+      const chips = Object.keys(SHORT).map(k => {
+        const e = ev.find(x => x.key === k);
+        if(!e) return `<span class="vg">${SHORT[k]} ?</span>`;
+        const cls = e.unknown ? 'unk' : e.ok ? 'ok' : 'bad';
+        const mark = e.unknown ? '?' : e.ok ? '✓' : '✗';
+        return `<span class="vg ${cls}" title="${e.detail || ''}">${SHORT[k]} ${mark}</span>`;
+      }).join('');
+      gates = `<div class="vgates">${chips}</div>`;
+    }
+    return `<div class="st ${st}" data-id="${m.id}">
+      <div class="st hdr"><span class="dot"></span>
+        <div><div class="nm">${m.id}</div><div class="en">${m.zh} · ${m.en}</div></div>
+        ${scTxt}
+      </div>
+      <div class="barwrap"><div class="barfill" style="width:${score===null?0:Math.min(100,score*100)}%"></div></div>
+      <div class="msg">${s.msg||'待机中'}</div>
+      ${gates}
+      <div style="font-size:10px;color:#4f6076;margin-top:4px;font-family:Consolas,monospace">${met}</div>
+    </div>`;
+  }).join('');
+  $('stations').innerHTML = html;
+  document.querySelectorAll('.st').forEach(el=>{
+    el.onclick = ()=>{ const lead=(S.leads||[]).find(l=>l.state==='FILLED'||l.state==='STAGED');
+      if(lead){ curCode=lead.code; loadChart(); } };
+  });
+}
+
+/* ---------------- handoff 链路 ---------------- */
+const STAGES = ['CRAWLER','SCAN','VET','SOCIAL','SIZE','FILLS','RISK'];
+function renderChain(){
+  const lead = (S.leads||[])[0];
+  let done = 0, bad = -1;
+  if(lead){
+    if(lead.state === 'REJECTED'){ done = 2; if((lead.vet||{}).verdict !== 'CLEAR') bad = 2; }
+    else if(lead.state === 'PASSED'){ done = 3; if((lead.social||{}).verdict !== 'CONFIRM') bad = 3; }
+    else if(lead.state === 'STAGED'){ done = 4; }
+    else if(lead.state === 'FILLED'){ done = 6; }
+    else { done = 4; }
+  }
+  $('chain').innerHTML = STAGES.map((s,i)=>{
+    let cls = '';
+    if(bad === i) cls = 'bad'; else if(i < done) cls = 'done'; else if(i === done) cls = 'on';
+    return `<div class="node ${cls}"><span class="b"></span><span class="l">${s}</span></div>`;
+  }).join('');
+}
+
+/* ---------------- 顶部 ---------------- */
+function renderKPI(){
+  const eq = S.equity, day = S.day_pnl, tot = S.total_pnl;
+  $('k-eq').textContent = '¥' + (eq||0).toLocaleString('zh-CN',{maximumFractionDigits:0});
+  $('k-day').innerHTML = `<span style="color:${day>=0?UP:DOWN}">${money(day)}</span>`;
+  $('k-tot').innerHTML = `<span style="color:${tot>=0?UP:DOWN}">${money(tot)}</span>`;
+  const s = S.stats||{};
+  $('k-fun').textContent = `${s.scanned||0} → ${s.cleared||0} → ${s.confirmed||0} → ${s.filled||0}`;
+  $('mode').textContent = S.halt ? 'HALTED' : (S.settings.auto_approve? 'PAPER · AUTO-APPROVE' : 'PAPER · MANUAL');
+  $('mode').style.borderColor = S.halt? 'rgba(246,70,93,.6)' : '';
+  $('btn-halt').textContent = S.halt ? '恢复运行' : 'STOP ALL';
+
+  // 账本恒等式：现金 + 市值 = 初始 + 已实现 + 未实现
+  const led = S.ledger || {};
+  const ledEl = $('k-led');
+  if(led.ok){
+    ledEl.innerHTML = `<span style="color:${UP}">✓ 平账</span>`;
+  }else{
+    ledEl.innerHTML = `<span style="color:${DOWN}">✗ 差 ${(led.diff||0).toFixed(2)}</span>`;
+  }
+  ledEl.title = `现金 ${(led.cash||0).toFixed(0)} + 市值 ${(led.mv||0).toFixed(0)} = ` +
+                `初始 ${(S.init||0).toFixed(0)} + 已实现 ${(led.realized||0).toFixed(0)} + ` +
+                `浮动 ${(led.unrealized||0).toFixed(0)}` +
+                (led.replay_bad && led.replay_bad.length? ` ｜ 成交对不上持仓：${led.replay_bad.map(x=>x.code).join(',')}` : '');
+
+  // 数据基准：这份数据是哪天的，以及我是不是瞎的
+  const fr = S.freshness || {};
+  const asofEl = $('k-asof');
+  if(!fr.asof){
+    asofEl.innerHTML = `<span style="color:${DOWN}">失明 · 基准不明</span>`;
+    asofEl.title = '取不到交易日基准，系统按"不知道自己有没有数据"处理，不新开仓';
+  }else if(fr.blind){
+    asofEl.innerHTML = `<span style="color:${DOWN}">失明 · ${fr.asof}</span>`;
+    asofEl.title = `今日 ${fr.today} 盘中，但数据停在 ${fr.asof}`;
+  }else if(fr.stale){
+    asofEl.innerHTML = `<span style="color:#f0b429">收盘 ${fr.asof}</span>`;
+    asofEl.title = `非交易时段，数据为 ${fr.asof} 收盘，属正常`;
+  }else{
+    asofEl.innerHTML = `<span style="color:${UP}">当日 ${fr.asof}</span>`;
+    asofEl.title = '数据与今日同一交易日';
+  }
+}
+
+/* ---------------- 事件流 ---------------- */
+function renderFeed(){
+  const evs = S.events || [];
+  $('ev-count').textContent = `${evs.length} 条 · 最近 ${evs[0]?evs[0].t:'—'}`;
+  const html = evs.slice(0,40).map(e=>`<div class="ev ${e.kind||'info'}">
+     <span class="t">${e.t}</span><span class="w">${e.who}</span>
+     <span class="x">${e.text}</span></div>`).join('');
+  const feed = $('feed');
+  feed.innerHTML = html || '<div class="empty">暂无事件</div>';
+  if(evs[0] && evs[0].t !== lastEv){ feed.scrollTop = 0; lastEv = evs[0].t; }
+}
+
+/* ---------------- 持仓 ---------------- */
+function renderPositions(){
+  const ps = S.positions || [];
+  $('pos-meta').textContent = `${ps.length} 只 · 现金 ¥${(S.cash||0).toFixed(0)}`;
+  if(!ps.length){ $('positions').innerHTML='<div class="empty">空仓。等待 SCAN → VET → SOCIAL 三关通过。</div>'; return; }
+  $('positions').innerHTML = `<table><thead><tr>
+    <th>代码</th><th>名称</th><th>股数</th><th>成本</th><th>现价</th>
+    <th>浮盈</th><th>止损/目标</th><th></th></tr></thead><tbody>
+    ${ps.map(p=>`<tr>
+      <td>${p.code}</td><td class="nm2">${p.name||''}</td><td>${p.shares}</td>
+      <td>${fmt(p.entry)}</td><td>${fmt(p.last)}</td>
+      <td style="color:${(p.float_pnl||0)>=0?UP:DOWN}">${money(p.float_pnl)} (${fmt(p.float_pct)}%)</td>
+      <td style="font-size:10.5px;color:#8fa0b3">${fmt(p.stop)} / ${fmt(p.target)}</td>
+      <td><button class="mini" data-code="${p.code}">平仓</button></td>
+    </tr>`).join('')}</tbody></table>`;
+  $('positions').querySelectorAll('.mini').forEach(b=>{
+    b.onclick = async ()=>{ try{ S = await api('/api/desk/close?code='+b.dataset.code); renderAll(); toast('已平仓 '+b.dataset.code);}catch(e){toast(e.message);} };
+  });
+}
+
+/* ---------------- 线索 ---------------- */
+function renderLeads(){
+  const ls = S.leads || [];
+  $('lead-meta').textContent = `${ls.length} 条`;
+  const rows = ls.slice(0,24);
+  if(!rows.length){ $('leads').innerHTML='<div class="empty">暂无线索</div>'; return; }
+  $('leads').innerHTML = `<table><thead><tr>
+    <th>号</th><th>标的</th><th>SCAN</th><th>VET</th><th>SOC</th><th>状态</th><th>动作</th><th>说明</th>
+    </tr></thead><tbody>${rows.map(l=>{
+      const v=l.vet||{}, so=l.social||{};
+      const evs = v.evidence || [];
+      const bad = evs.filter(c=>c.ok===false);
+      const evTxt = bad.map(c=>`${c.key} ${(c.value===null||c.value===undefined)?'不可判':c.value} vs ${c.threshold}`).join('；');
+      const tip = evs.map(c=>`${c.ok?'✓':'✗'} ${c.label}｜值 ${(c.value===null||c.value===undefined)?'不可判':c.value}｜阈值 ${c.threshold}｜${c.detail}`).join('\n');
+      return `<tr title="${tip.replace(/"/g,'&quot;')}">
+        <td style="font-size:10px;color:#5d6d80">${l.id}</td>
+        <td class="nm2">${l.name}<span style="color:#4f6076"> ${l.code}</span></td>
+        <td>${fmt(l.score)}</td>
+        <td style="color:${v.verdict==='CLEAR'?DOWN:UP}">${v.score==null?'—':fmt(v.score)}</td>
+        <td>${so.score==null?'—':fmt(so.score)}</td>
+        <td><span class="tag ${l.state}">${l.state}</span></td>
+        <td>${l.state==='STAGED'
+          ? `<button class="mini act" data-id="${l.id}" data-act="approve">批准</button><button class="mini act" data-id="${l.id}" data-act="reject">否决</button>`
+          : '—'}</td>
+        <td style="font-size:10px;color:#7b8a9c">${l.note||''}
+          ${evTxt?`<div style="color:#8fa3b8;font-size:9px;margin-top:2px">证据：${evTxt}</div>`:''}</td>
+      </tr>`;}).join('')}</tbody></table>`;
+  $('leads').querySelectorAll('tbody tr').forEach((tr,i)=>{
+    tr.style.cursor='pointer';
+    tr.onclick=()=>{ const l=rows[i]; if(l){ curCode=l.code; loadChart(); } };
+  });
+  // 人机边界：只有人点这一下，STAGED 才会变成 APPROVED / REJECTED
+  $('leads').querySelectorAll('.act').forEach(b=>{
+    b.onclick = async (e)=>{
+      e.stopPropagation();
+      const id = b.dataset.id;
+      if(b.dataset.act === 'approve'){ openApprove(id); return; }   // 先预览，再确认
+      try{
+        S = await api('/api/desk/reject?lead='+encodeURIComponent(id));
+        renderAll();
+        toast('已否决 '+id);
+      }catch(err){ toast(err.message); }
+    };
+  });
+}
+
+/* ---------------- 批准前预览 ---------------- */
+// 三种结论必须能分清：一致 / 页面错了 / 没读过（没读过不等于对）
+function rbLine(rb){
+  if(!rb || !rb.state) return '—';
+  if(rb.state === 'ok') return '✓ ' + (rb.why || '一致');
+  if(rb.state === 'drift') return '<span style="color:#ff7a8a">✗ ' + (rb.why || '不一致') + '</span>';
+  return '<span style="color:#ffd166">未校验 · ' + (rb.why || '') + '</span>';
+}
+let apvLead = null;
+async function openApprove(id){
+  try{
+    // 批准要基于"人眼前这一页"。所以先按这只票把因子板刷出来、让触角读一遍，
+    // 否则后端只能判"未校验" —— 那一栏就白留了。
+    const lead = (S.leads || []).find(x => x.id === id);
+    if(lead){
+      if(curCode !== lead.code){ curCode = lead.code; loadChart(); }
+      await loadFactors(lead.code);
+    }
+    const p = await api('/api/desk/preview?lead=' + encodeURIComponent(id));
+    apvLead = id;
+    $('apv-id').textContent = id;
+    const money = v => (v===null||v===undefined) ? '—' : Math.round(v).toLocaleString('en-US');
+    $('apv-body').innerHTML = [
+      ['标的', `${p.name} ${p.code}`],
+      ['现价 / 偏离入场价', (p.live == null)
+        ? '取不到（不能批准）'
+        : `${p.live} / ${(p.drift_pct > 0 ? '+' : '') + p.drift_pct}%${p.price_ok ? '' : '（超 1% 上限，不能批）'}`],
+      ['股数 / 入场价', `${p.shares} 股 @ ${p.entry}`],
+      ['止损 / 目标', `${p.stop} / ${p.target}（${p.rr}R）`],
+      ['成交金额 / 手续费', `${money(p.amount)} / ${money(p.fee)}`],
+      ['占用现金', `${money(p.total)} → 批完剩 ${money(p.cash_after)}`],
+      ['打止损亏多少', `${money(p.risk)}（权益的 ${p.risk_pct}%）`],
+      ['页面读数校验', rbLine(p.readback)],
+    ].map(([k,v])=>`<div class="aprow"><span>${k}</span><b>${v}</b></div>`).join('');
+    const w = p.warns || [];
+    $('apv-warn').innerHTML = w.length
+      ? w.map(x=>`<div class="w">⚠ ${x}</div>`).join('')
+      : '<div class="ok">没有命中现金/仓位/风险/过夜任何一条问题</div>';
+    // 两条都要过：价格复核（旧价成交会让股数失真）+ 读数复核（页面显示的不是机器判的）
+    const okBtn = $('apv-ok');
+    const can = !!(p.price_ok && p.readback_ok);
+    okBtn.disabled = !can;
+    okBtn.style.opacity = can ? '' : '.4';
+    okBtn.style.cursor = can ? '' : 'not-allowed';
+    okBtn.title = can ? '' : (!p.price_ok ? (p.price_why || '现价复核未通过')
+                                          : ('页面读数与接口不一致：' + ((p.readback || {}).why || '')));
+    $('apv').style.display = 'flex';
+  }catch(err){ toast(err.message); }
+}
+$('apv-cancel').onclick = ()=>{ $('apv').style.display='none'; apvLead = null; };
+$('apv').onclick = e => { if(e.target && e.target.id === 'apv'){ $('apv').style.display='none'; apvLead=null; } };
+$('apv-ok').onclick = async ()=>{
+  if(!apvLead) return;
+  const id = apvLead;
+  $('apv').style.display = 'none'; apvLead = null;
+  try{
+    S = await api('/api/desk/approve?lead='+encodeURIComponent(id));
+    renderAll();
+    toast('已批准 '+id);
+  }catch(err){ toast(err.message); }
+};
+
+/* ---------------- 图表 ---------------- */
+async function loadChart(){
+  const code = curCode || (S.leads && S.leads[0] && S.leads[0].code);
+  if(!code){ chart.clear(); return; }
+  curCode = code;
+  try{
+    if(curTab === 'minute' || curTab === 'd5'){
+      const nDays = curTab === 'd5' ? 5 : 1;
+      const m = await api('/api/minute?code='+code+'&days='+nDays);
+      const flat = [];
+      (m.days||[]).forEach(dd => (dd.points||[]).forEach(p =>
+        flat.push([ nDays > 1 ? (dd.date.slice(5) + ' ' + p[0]) : p[0], p[1], p[2], p[3] ])));
+      const pts = flat;
+      const pre = m.preClose || (pts[0]?pts[0][1]:0);
+      const up = (pts.length?pts[pts.length-1][1]:pre) >= pre;
+      // partial 有两种：09:30 前是集合竞价（只有 1 个点），09:30 后是"分时还没走完"。
+      // 之前一律写成"集合竞价中"，开盘 7 分钟时读者会以为现在是 09:2x。
+      const nowHM = (() => { const d = new Date(); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); })();
+      const inSession = (nowHM >= '09:30' && nowHM <= '11:30') || (nowHM >= '13:00' && nowHM <= '15:00');
+      $('ch-meta').textContent = `${m.name} ${m.code} · ${nDays > 1 ? '五日 ' + (m.days||[]).length + ' 天' : '分时'} · 昨收 ${fmt(pre)}`
+        + (m.stale ? `：画的是 ${m.asof}，今日未开盘`
+                   : (m.partial ? (inSession
+                       ? `：开盘 ${m.points} 分钟，分时还在累积（${m.points} 个点）`
+                       : `：集合竞价中，只有 ${m.points} 个点（09:30 后才是完整分时）`)
+                     : ''));
+      chart.setOption({
+        backgroundColor:'transparent', animation:false,
+        tooltip:{trigger:'axis',backgroundColor:'rgba(8,12,20,.94)',borderColor:'rgba(0,229,255,.4)',
+          textStyle:{color:'#d7e0ea',fontSize:12},formatter:ps=>{
+            const p=ps[0],i=p.dataIndex;
+            return `${pts[i][0]}<br>价格 <b style="color:${up?UP:DOWN}">${pts[i][1].toFixed(2)}</b><br>均价 ${pts[i][2]}`;}},
+        grid:[{left:52,right:18,top:14,height:'64%'},{left:52,right:18,top:'84%',height:'10%'}],
+        xAxis:[{type:'category',data:pts.map(p=>p[0]),boundaryGap:false,
+          axisLine:{lineStyle:{color:'#1b2432'}},axisTick:{show:false},
+          axisLabel:{color:DIM,fontSize:10,interval:59},splitLine:{show:false}},
+         {type:'category',data:pts.map(p=>p[0]),boundaryGap:false,gridIndex:1,
+          axisLine:{lineStyle:{color:'#1b2432'}},axisTick:{show:false},axisLabel:{show:false}}],
+        yAxis:[{scale:true,gridIndex:0,axisLine:{show:false},axisTick:{show:false},
+          axisLabel:{color:DIM,fontSize:10,formatter:v=>v.toFixed(2)},
+          splitLine:{lineStyle:{color:'rgba(27,36,50,.6)'}}},
+         {gridIndex:1,axisLine:{show:false},axisTick:{show:false},axisLabel:{show:false},splitLine:{show:false}}],
+        series:[
+          {type:'line',data:pts.map(p=>p[1]),symbol:'none',
+           lineStyle:{color:up?UP:DOWN,width:1.6},
+           areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[
+             {offset:0,color:up?'rgba(246,70,93,.4)':'rgba(46,189,133,.4)'},{offset:1,color:'rgba(5,7,13,0)'}])},
+           markLine:{silent:true,symbol:'none',lineStyle:{color:'rgba(255,209,102,.55)',type:'dashed'},
+             label:{show:false},data:[{yAxis:pre}]}},
+          {type:'line',data:pts.map(p=>p[2]),symbol:'none',smooth:true,
+           lineStyle:{color:AMBER,width:1,opacity:.8}},
+          {type:'bar',data:pts.map(p=>p[3]),xAxisIndex:1,yAxisIndex:1,barWidth:'55%',
+           itemStyle:{color:'rgba(0,229,255,.35)'}}
+        ]
+      }, true);
+    } else {
+      const period = (curTab === 'week' || curTab === 'month') ? curTab : 'day';
+      const k = await api('/api/kline?code='+code+'&period='+period);
+      const LIM = { day: 120, week: 140, month: 120 }[period];
+      const it = k.items.slice(-LIM);
+      const pName = { day: '日K', week: '周K', month: '月K' }[period];
+      $('ch-meta').textContent = `${k.name} ${k.code} · ${pName} ${it.length} 根`;
+      const closes = it.map(x=>x.c);
+      const ma=(n)=>closes.map((_,i)=>i<n-1?null:+(closes.slice(i-n+1,i+1).reduce((a,b)=>a+b,0)/n).toFixed(2));
+      chart.setOption({
+        backgroundColor:'transparent', animation:false,
+        tooltip:{trigger:'axis',backgroundColor:'rgba(8,12,20,.94)',borderColor:'rgba(0,229,255,.4)',
+          textStyle:{color:'#d7e0ea',fontSize:12}},
+        grid:[{left:52,right:18,top:14,height:'62%'},{left:52,right:18,top:'82%',height:'12%'}],
+        xAxis:[{type:'category',data:it.map(x=>x.d.slice(5)),axisLine:{lineStyle:{color:'#1b2432'}},
+          axisTick:{show:false},axisLabel:{color:DIM,fontSize:10},splitLine:{show:false}},
+         {type:'category',data:it.map(x=>x.d.slice(5)),gridIndex:1,axisLine:{lineStyle:{color:'#1b2432'}},
+          axisTick:{show:false},axisLabel:{show:false}}],
+        yAxis:[{scale:true,gridIndex:0,axisLine:{show:false},axisTick:{show:false},
+          axisLabel:{color:DIM,fontSize:10},splitLine:{lineStyle:{color:'rgba(27,36,50,.6)'}}},
+         {gridIndex:1,axisLabel:{show:false},axisLine:{show:false},axisTick:{show:false},splitLine:{show:false}}],
+        series:[
+          {type:'candlestick',data:it.map(x=>[x.o,x.c,x.l,x.h]),
+           itemStyle:{color:UP,color0:DOWN,borderColor:UP,borderColor0:DOWN}},
+          {type:'line',data:ma(5),symbol:'none',lineStyle:{color:AMBER,width:1}},
+          {type:'line',data:ma(10),symbol:'none',lineStyle:{color:'#7ee787',width:1}},
+          {type:'line',data:ma(20),symbol:'none',lineStyle:{color:'#a78bfa',width:1}},
+          {type:'bar',data:it.map(x=>({value:x.v,itemStyle:{color:(x.c>=x.o?UP:DOWN)+'99'}})),
+           xAxisIndex:1,yAxisIndex:1,barWidth:'60%'}
+        ]
+      }, true);
+    }
+    loadFactors(code);      // 图上换了标的，因子板跟着换（不阻塞绘图）
+  }catch(e){ $('ch-meta').textContent = '加载失败：'+e.message; }
+}
+
+/* ---------------- 因子板：只摆证据，不做决定 ----------------
+   数据来自 /api/stock/factors（factors.py 纯函数）：
+   B 价格结构 / C 量能 / F 可交易性 + 新鲜度。
+   算不出来的项显示"不可判"，不猜、不补默认值。 */
+const CELLS = [['structure','B · 价格结构'],['volume','C · 量能'],['flow','D · 资金面'],
+               ['rs','E · 相对强弱'],['tradable','F · 可交易性']];
+function fxv(v, unit){ return (v === null || v === undefined) ? '—' : (v + (unit || '')); }
+function fxrow(k, v, cls){
+  return `<div class="fxrow"><span class="k">${k}</span><span class="v ${cls||''}">${v}</span></div>`;
+}
+function loadFactors(code, poll){
+  if(!code) return Promise.resolve(null);
+  return api('/api/stock/factors?code=' + code).then(async d => {
+    const prev = fxPrev[d.code];
+    const delta = fxDelta(d, prev).join('·');
+    if(delta){ tele.chg = delta; tele.chgT = Date.now(); }
+    else if(Date.now() - (tele.chgT || 0) > 45000){ tele.chg = ''; }   // 45 秒没新变化就收掉台词
+    if(poll) tele.polls = (tele.polls || 0) + 1;                        // 轮询复检次数（可验收）
+    fxPrev[d.code] = d;
+    window.__fx = d;
+    renderFactors(d);
+    // 真实数据变了才排队去因子板看一眼：换票 or 本轮复检有差异（没差异不动）
+    if(!poll) queueStation('FACTORS', '换票 ' + d.code);
+    else if(delta) queueStation('FACTORS', '因子变化 ' + delta.slice(0, 22));
+    loadPlan(d.code);
+    await reportReadback(d.code);                 // 触角读到的这一页，回喂给后端比对
+                                                  // 必须等它回来：批准闸门读的就是这条结果
+    return d;
+  }).catch(e => { $('fx-meta').textContent = '因子计算失败：' + e.message; return null; });
+}
+
+/* 读数回喂：把蜘蛛这一轮"从页面上读到的字"原样传回后端。
+   后端会自己重算一遍 factors 再逐项比 —— 这条链路的意义是：
+   界面显示错了、或者显示的是旧数，就不许拿它当批准依据。 */
+function reportReadback(code){
+  try{
+    if(!code) return Promise.resolve(null);
+    const rows = [...document.querySelectorAll('#factor-body .fxrow')]
+      .map(r => ({ k: (r.querySelector('.k') || {}).textContent || '',
+                   v: (r.querySelector('.v') || {}).textContent || '' }))
+      .filter(x => x.k && x.v);
+    if(!rows.length) return Promise.resolve(null);
+    return fetch('/api/desk/readback?code=' + encodeURIComponent(code),
+          { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(rows) })
+      .then(r => r.json())
+      .then(o => {
+        window.__rb = o;
+        tele.rdN = o.n || 0;                       // 本轮比对成功的项数
+        tele.rdBad = (o.bad || []).length;         // 页面真的错了的项数（会拦批准）
+        tele.rdCode = o.code; tele.rdAt = Date.now();
+        return o;
+      })
+      .catch(() => null);
+  }catch(e){ return Promise.resolve(null); }
+}
+
+/* G · 风险与仓位：三约束取最小的"过程"，不是只给一个数字 */
+function loadPlan(code){
+  api('/api/stock/plan?code=' + code).then(p => {
+    window.__plan = p;
+    renderPlan(p);
+  }).catch(e => {
+    const el = $('fx-plan');
+    if(el) el.innerHTML = '<h4>G · 风险与仓位</h4><div class="fxnote">算不出来：' + e.message + '</div>';
+  });
+}
+function renderPlan(p){
+  const el = $('fx-plan');
+  if(!el) return;
+  const row = fxrow;
+  el.innerHTML =
+    `<h4>G · 风险与仓位</h4>` +
+    row('入场 / 止损 / 目标', `${p.entry} / ${p.stop} / ${p.target}`) +
+    row('每股风险 / 盈亏比', `${p.risk_per_share} / ${p.rr}R`) +
+    row('风险预算', `${p.risk_amt} 元（权益 ${p.risk_pct}%）`) +
+    row('约束① 风险预算', p.c1_risk + ' 股') +
+    row('约束② 单票 25%', p.c2_cap + ' 股') +
+    row('约束③ 现金', p.c3_cash + ' 股') +
+    row('取最小 → 下单',
+        p.shares >= 100 ? `${p.shares} 股（被「${p.binding}」卡住）` : '0 股（不足 1 手，预算不够）',
+        p.ok ? 'ok' : 'bad') +
+    row('成本(含买费) / 回本需涨',
+        p.shares >= 100 ? `${p.cost_total} / +${p.breakeven_pct}%` : '— / —（没有可下的手数）',
+        'warn') +
+    row('止损打掉', `-${p.stop_loss_amt} 元（当日额度 ${p.daily_loss_budget}）`) +
+    (p.blockers && p.blockers.length
+      ? `<div class="fxnote" style="color:#ff7a8a">不可成交，这单不能发：${p.blockers.join('；')}</div>`
+      : (p.unknowns && p.unknowns.length
+          ? `<div class="fxnote" style="color:#ffd166">能算出手数，但有一项不可判（${p.unknowns.join('；')}）：<br>开盘前/非交易时段只能算"如果买得进"，真要下单得等盘中复核。</div>`
+          : `<div class="fxnote">算术过关 ≠ 该买，还要过 VET 与人工闸门。</div>`));
+}
+
+/* H · 证据化判决：把首条线索的每条 gate 摆出来，含 unknown */
+function renderVerdict(){
+  const el = $('fx-verdict');
+  if(!el || !S) return;
+  // 优先展示"有影子分的在途线索"：已否决的历史单没有影子分（上线前挂的），看了也没新东西
+  const all = (S.leads || []);
+  const l = all.find(x => x.state === 'STAGED' && x.vet && x.vet.shadow)
+         || all.find(x => x.vet && x.vet.shadow)
+         || all[0];
+  if(!l || !l.vet){ el.innerHTML = '<h4>H · 证据化判决（首条线索）</h4><div class="fxnote">还没有线索</div>'; return; }
+  const ev = l.vet.evidence || [];
+  const judged = ev.filter(x => !x.unknown);
+  const passed = judged.filter(x => x.ok).length;
+  const mark = x => x.unknown ? '<span class="v warn">不可判</span>'
+             : x.ok ? '<span class="v ok">通过</span>' : '<span class="v bad">否决</span>';
+  const sh = l.vet.shadow || null;
+  el.innerHTML = `<h4>H · 证据化判决 · 首条线索 ${l.code} ${l.name}</h4>` +
+    `<div class="fxnote">通过 ${passed}/${judged.length} 项（另有 ${ev.length - judged.length} 项不可判）`
+    + ` · 综合分 ${(l.vet.score * 100).toFixed(1)}% · 结论 ${l.vet.verdict}</div>` +
+    ev.map(x => `<div class="fxrow"><span class="k">${x.label}</span>${mark(x)}</div>`).join('') +
+    // 影子分：同一底分换成"风险折价"口径会得多少 —— 只做对照、不参与决策，所以刻意保持灰色
+    (sh ? `<div class="fxrow"><span class="k">影子分 · 风险折价口径（不参与决策）</span>`
+      + `<span class="v" style="color:#8a97a6">${sh.s} · 折价 ${Math.round(sh.pen * 100)}%`
+      + `${(sh.why && sh.why.length) ? '（' + sh.why.join('、') + '）' : ''}`
+      + ` · ${sh.sel ? '会被选中' : '不会选中'}</span></div>` : '') +
+    `<div class="fxnote">证据：${ev.map(x => x.detail).join(' · ')}</div>` +
+    // 打分权重是有版本的：不显示版本号，页面上的分数就追不到"哪套权重算出来的"，
+    // "自进化"也就变成了看不见的传说
+    (() => {
+      const p = S.params || null;
+      if(!p) return '';
+      const v = p.version == null ? '?' : p.version;
+      const sc = p.scan || {};
+      return `<div class="fxnote" style="color:#8a97a6">打分参数 v${v} · 涨幅 ${(sc.w_pct*100).toFixed(0)}%`
+        + ` / 资金流 ${(sc.w_flow*100).toFixed(1)}% · ${p.source || ''}`
+        + `（校准器达标才改，一天最多一次，可回滚）</div>`;
+    })() +
+    // 自校准那条腿：样本进度 + 上次评估结论。看不见就等于不存在
+    (() => {
+      const c = S.calibration || null;
+      if(!c) return '';
+      const last = c.last && c.last.at ? ` · 上次评估 ${c.last.at.slice(11)}` : ' · 还没评估过';
+      // 分母要写全：定稿样本 / 等收盘的 / 有影子分标签的 —— 少一个就会让人误判“坏了”或“快够了”
+      const tagged = c.tagged ?? 0, untagged = c.untagged ?? 0;
+      return `<div class="fxnote" style="color:#8a97a6">自校准 · 定稿样本 ${c.samples ?? '?'}/${c.need ?? 300}`
+        + `（${c.sample_days ?? '?'}/${c.need_days ?? 20} 个交易日）`
+        + (c.not_final ? ` · 另有 ${c.not_final} 条等收盘` : '')
+        + ` · 影子分 ${tagged}/${tagged + untagged} 条判断` + last
+        + `「${c.ok ? '达标' : '不动手'}」</div>`;
+    })();
+}
+
+// 变化检测：同一只票第二次看盘，和上一份快照对比（"它记得上一次"）
+const fxPrev = {};
+function fxDelta(cur, prev){
+  const out = [];
+  if(!prev) return out;
+  const a = prev.volume || {}, b = cur.volume || {};
+  if(a.vr5 && b.vr5){
+    if(a.vr5 >= 1.5 && b.vr5 <= 1.0) out.push('量能退潮');
+    if(a.vr5 <= 1.0 && b.vr5 >= 1.5) out.push('放量了');
+  }
+  const ps = prev.structure || {}, cs = cur.structure || {};
+  if(ps.atr_pct && cs.atr_pct && cs.atr_pct - ps.atr_pct >= 2) out.push('波动起来了');
+  if(prev.price && cur.price){
+    const dp = (cur.price / prev.price - 1) * 100;
+    if(Math.abs(dp) >= 1) out.push('价格 ' + dp.toFixed(1) + '%');
+  }
+  if(prev.fresh === false && cur.fresh === true) out.push('数据回来了');
+  return out;
+}
+function renderFactors(d){
+  const s = d.structure, v = d.volume, t = d.tradable;
+  const freshTxt = d.fresh === true ? '新鲜' : d.fresh === false ? '过期' : '未知';
+  $('fx-meta').textContent = `${d.name} ${d.code} · asof ${d.asof || '—'} · ${freshTxt} · 更新 ${d.updated || '—'}`;
+
+  const flags = (s.flags || []).map(f => `<span class="fxflag">${f}</span>`).join('') || '<span class="fxnote">无结构性标签</span>';
+  const st =
+    `<h4>B · 价格结构</h4>` +
+    fxrow('MA20 / MA60', `${fxv(s.ma20)} / ${fxv(s.ma60)}`) +
+    fxrow('均线斜率 20日', fxv(s.slope20, '%'), s.slope20 > 0 ? 'ok' : s.slope20 < 0 ? 'bad' : '') +
+    fxrow('均线斜率 60日', fxv(s.slope60, '%'), s.slope60 > 0 ? 'ok' : s.slope60 < 0 ? 'bad' : '') +
+    fxrow('距 60 日高 / 高于低点',
+          `${fxv(s.pos_hi, '%')} / ${s.pos_lo == null ? '—' : '+' + (s.pos_lo - 100).toFixed(1) + '%'}`,
+          s.pos_hi >= 97 ? 'warn' : '') +
+    fxrow('ATR / 占价', `${fxv(s.atr)} / ${fxv(s.atr_pct, '%')}`,
+          s.atr_pct > 5 ? 'warn' : '') +
+    fxrow('近3日涨幅', fxv(s.run3, '%'), s.run3 >= 18 ? 'bad' : '') +
+    fxrow('跳空 / 连板', `${s.gaps} 次 / ${s.boards} 板`) +
+    `<div class="fxnote">${flags}</div>`;
+
+  const vrCls = v.state === '放量' ? 'ok' : v.state === '缩量' ? 'warn' : '';
+  const vol =
+    `<h4>C · 量能</h4>` +
+    fxrow('量比 / 换手', `${fxv(v.volumeRatio)} / ${fxv(v.turnover, '%')}`) +
+    fxrow('成交额', v.amount ? (v.amount / 1e8).toFixed(2) + ' 亿' : '—') +
+    fxrow('额 / 5日均额', fxv(v.vr5, 'x'), vrCls) +
+    fxrow('额 / 20日均额', fxv(v.vr20, 'x'), vrCls) +
+    fxrow('量能状态', v.state || '—', vrCls) +
+    fxrow('量价背离', v.diverge ? '是（价新高量缩）' : '否', v.diverge ? 'bad' : '') +
+    `<div class="fxnote">放量阈值 ${1.5}x / 缩量 ${0.7}x（5 日均额口径）</div>`;
+
+  const tr =
+    `<h4>F · 可交易性</h4>` +
+    fxrow('结论', t.ok ? (t.early ? '能下单，但流动性不可判' : '可下单（不代表该买）')
+                       : '不可成交', t.ok ? (t.early ? 'warn' : 'ok') : 'bad') +
+    fxrow('成交额门槛', t.liquidity_ok ? '≥ 1.5 亿' : '< 1.5 亿', t.liquidity_ok ? 'ok' : (t.early ? 'warn' : 'bad')) +
+    fxrow('涨跌停幅度', (t.limit_pct || 10) + '%') +
+    fxrow('日K 根数', t.bars) +
+    (t.reasons && t.reasons.length
+      ? `<div class="fxnote bad">不可成交原因：${t.reasons.join('；')}</div>`
+      : `<div class="fxnote${t.early ? ' warn' : ''}"${t.early ? ' style="color:#ffd166"' : ''}>`
+        + (t.early ? `开盘 ${t.session_minutes} 分钟：成交额/换手还是当日累计值，按收盘口径判不了，这一单不确认。`
+                   : `没有命中任何硬约束。注意：可下单 ≠ 该买。`) + `</div>`);
+
+  const unknown = (d.unknown || []).length
+    ? `<div class="fxnote" style="color:#ffd166">不可判：${d.unknown.join(', ')}</div>` : '';
+
+  // D · 资金面（东财 fflow 日线，元 / %，口径=占成交额）
+  const f = d.flow || {};
+  const yv = v => (v == null ? '—' : (Math.abs(v) >= 1e8 ? (v / 1e8).toFixed(2) + ' 亿'
+                                     : (v / 1e4).toFixed(0) + ' 万'));
+  const fCls = f.state === '主力净流入' ? 'ok' : f.state === '主力净流出' ? 'bad' : 'warn';
+  const flowBlk =
+    `<h4>D · 资金面</h4>` +
+    fxrow('主力净流入', f.main == null ? '—' : yv(f.main), fCls) +
+    fxrow('占成交额', fxv(f.main_pct, '%'), fCls) +
+    fxrow('3 日累计', f.cum3 == null ? '—' : yv(f.cum3), f.cum3 > 0 ? 'ok' : f.cum3 < 0 ? 'bad' : '') +
+    fxrow('5 / 10 日累计', `${f.cum5 == null ? '—' : yv(f.cum5)} / ${f.cum10 == null ? '—' : yv(f.cum10)}`) +
+    fxrow('状态', f.state || '—', fCls) +
+    (f.warn ? `<div class="fxnote warn" style="color:#ffd166">${f.warn}</div>`
+            : `<div class="fxnote">单日 ≠ 持续，看 3 日累计是否同向（${f.asof || '—'}）</div>`);
+
+  // E · 相对强弱（对照上证指数，同一复权口径）
+  const r = d.rs || {};
+  const eCls = v => (v == null ? '' : v >= 3 ? 'ok' : v <= -3 ? 'bad' : '');
+  const rsBlk =
+    `<h4>E · 相对强弱</h4>` +
+    fxrow('大盘 / 个股 今日', `${fxv(r.idx_pct, '%')} / ${d.pct == null ? '—' : Number(d.pct).toFixed(2) + '%'}`) +
+    fxrow('今日超额', fxv(r.excess, '%'), eCls(r.excess)) +
+    fxrow('近 5 日 / 大盘', `${fxv(r.r5, '%')} / ${fxv(r.idx_r5, '%')}`) +
+    fxrow('5 日超额', fxv(r.excess5, '%'), eCls(r.excess5)) +
+    fxrow('20 日超额', fxv(r.excess20, '%'), eCls(r.excess20)) +
+    fxrow('状态', r.state || '—') +
+    `<div class="fxnote">对照 ${r.index_name || '上证指数'}（${r.asof || '—'}），超额=个股-指数</div>`;
+
+  // 交叉校验：写清楚"哪两个因子在打架"
+  const cross = d.cross || {items: [], count: 0};
+  const crossBlk = cross.count
+    ? `<div class="fxcross">交叉校验 ${cross.count} 项冲突：${cross.items.join('；')}</div>`
+    : `<div class="fxcross ok">交叉校验：量价 / 资金 / 强弱三者未见互相矛盾（不是没查，是没有）</div>`;
+
+  // 背景层：市场状态 / 板块广度 / 所属行业 / 估值。只做参考，不进打分、不进 GATES。
+  const bg = d.bg || null, val = d.valuation || null;
+  const pctTxt = (v) => (v == null) ? '—' : ((v > 0 ? '+' : '') + Number(v).toFixed(2) + '%');
+  const numTxt = (v, nd) => (v == null) ? '—' : Number(v).toFixed(nd);
+  const bgBlk = (() => {
+    const lines = [];
+    if (bg && bg.idx && bg.idx.length) {
+      lines.push(fxrow('市场', bg.idx.map(i => `${i.name} ${pctTxt(i.pct)}`).join(' / ')));
+    }
+    if (bg && bg.boardsTotal) {
+      const u = bg.boardsUp, dn = bg.boardsDown, fl = bg.boardsFlat;
+      lines.push(fxrow('板块广度', `涨 ${u} / 跌 ${dn} / 平 ${fl}（共 ${bg.boardsTotal} 个）`,
+        u > dn * 1.5 ? 'ok' : (dn > u * 1.5 ? 'bad' : '')));
+    }
+    if (bg && bg.industry) {
+      lines.push(fxrow('所属行业', `${bg.industry} ${pctTxt(bg.industryPct)}`));
+      if (bg.excess != null) lines.push(fxrow('个股超额', pctTxt(bg.excess), bg.excess > 0 ? 'ok' : 'bad'));
+    }
+    if (val) {
+      lines.push(fxrow('估值', `PE ${numTxt(val.pe, 1)} / PB ${numTxt(val.pb, 2)} / 市值 ${val.mcap ? (val.mcap / 1e8).toFixed(1) + ' 亿' : '—'}`));
+    }
+    // 情绪温度：市场今天多热，跟个股好坏是两件事，所以只放在背景层
+    const sent = d.sent || null, bill = d.bill || null;
+    if (sent && sent.zt != null) {
+      lines.push(fxrow('情绪温度',
+        `涨停 ${sent.zt} / 跌停 ${sent.dt == null ? '—' : sent.dt} / 最高 ${sent.maxLbc == null ? '—' : sent.maxLbc} 连板${sent.maxLbcName ? '（' + sent.maxLbcName + '）' : ''}`,
+        sent.zt >= 40 ? 'ok' : (sent.dt != null && sent.dt > sent.zt ? 'bad' : '')));
+      if (sent.premium != null) {
+        lines.push(fxrow('昨日涨停今日',
+          `${sent.prevZt} 只，${sent.prevUp}/${sent.prevQuoted} 只上涨，平均 ${pctTxt(sent.premium)}`,
+          sent.premium > 0 ? 'ok' : 'bad'));
+      }
+    }
+    if (bill && bill.date) {
+      lines.push(fxrow(`龙虎榜 ${bill.date.slice(5)}`,
+        `${bill.count} 家，净${bill.netBuy > 0 ? '买入' : '卖出'} ${Math.abs(bill.netBuy || 0).toFixed(2)} 亿`,
+        bill.netBuy > 0 ? 'ok' : 'bad'));
+    }
+    // 盘口结构脉冲：情绪温度只说"热不热"，这里说"封不封得住、接力断没断、钱在哪个行业"
+    const pulse = d.pulse || null, mv = d.vol || null;
+    if (pulse && pulse.ok) {
+      if (pulse.zbRate != null) {
+        lines.push(fxrow('炸板率',
+          `涨停 ${pulse.zt} / 炸板 ${pulse.zb} 家 → ${pulse.zbRate}%（摸过涨停的 ${pulse.zt + pulse.zb} 家里）`,
+          pulse.zbRate >= 45 ? 'bad' : (pulse.zbRate <= 25 ? 'ok' : '')));
+      }
+      if (pulse.ladder) {
+        const brk = pulse.ladder.filter(x => x.n === 0).map(x => x.k);
+        lines.push(fxrow('连板梯队',
+          pulse.ladder.map(x => `${x.k} ${x.n}`).join(' / ')
+          + (brk.length ? ` · ${brk.join('、')}断档` : ' · 梯队连续'),
+          brk.length ? 'bad' : 'ok'));
+      }
+      if (pulse.sealSum != null) {
+        lines.push(fxrow('封板强度',
+          `合计 ${pulse.sealSum} 亿 · 中位 ${(pulse.sealMed / 1e4).toFixed(2)} 亿`
+          + (pulse.sealTop ? ` · 最强 ${pulse.sealTop.n} ${pulse.sealTop.v} 亿` : '')
+          + (pulse.early != null ? ` · 早盘封板 ${pulse.early} 家 / 一字 ${pulse.oneWord} 家` : '')));
+      }
+      if (pulse.indTop) {
+        lines.push(fxrow('涨停集中度',
+          pulse.indTop.map(x => `${x.k} ${x.n}`).join(' / ')
+          + ` · 分布在 ${pulse.indN} 个行业`
+          + (pulse.indN >= 25 ? '（很分散）' : '（较集中）'),
+          pulse.indN <= 12 ? 'ok' : ''));
+      }
+    }
+    if (mv && mv.sum != null) {
+      lines.push(fxrow('两市量能',
+        `成交 ${(mv.sum / 1e4).toFixed(2)} 万亿（上证 ${mv.sh} / 深证 ${mv.sz} 亿）`
+        + (mv.ratio != null ? ` · 为近 5 日全天均额的 ${(mv.ratio * 100).toFixed(0)}%` : '')
+        + (mv.quoted ? '（已收盘）' : '（未收盘，今日还没走完）'),
+        mv.ratio == null ? '' : (mv.ratio >= 1 ? 'ok' : '')));
+    }
+    if (!lines.length) return '';
+    return `<div class="fxbg" style="grid-column:1/-1;border-top:1px solid rgba(27,36,50,.7);margin-top:8px;padding-top:6px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:26px">
+      <h4 style="grid-column:1/-1">背景层 · 市场 / 板块 / 行业 / 估值 / 情绪（只做参考，不进打分）</h4>${lines.join('')}
+      <div class="fxnote" style="grid-column:1/-1">板块广度 = 496 个行业/概念板块里上涨与下跌的个数，不是个股涨跌家数（指数接口 f104/f105 实测恒为 0，全市场要翻 60 页）。情绪温度与龙虎榜同样是市场级背景：涨停家数取东财涨停池，龙虎榜为上一交易日（盘后才发布）。</div></div>`;
+  })();
+
+  $('factor-body').innerHTML =
+    `<div class="fxcell">${st}</div>` +
+    `<div class="fxcell">${vol}</div>` +
+    `<div class="fxcell">${flowBlk}</div>` +
+    `<div class="fxcell">${rsBlk}</div>` +
+    `<div class="fxcell">${tr}${unknown}</div>` +
+    crossBlk + bgBlk;
+
+  // 冲突计数以 factors.py 的交叉校验为准（一条规则都不在前端重算）
+  tele.conflicts = cross.count;
+  tele.stale = (d.fresh === false) ? 1 : 0;
+}
+
+/* ---------------- 赛博蜘蛛：全屏爬行 · 每腿独立迈步 ----------------
+   视觉按源帧实测复刻（对齐 grokbot_clone 的 SPIDER 段）：
+     · 躯干：深蓝胶囊，左端一颗发光蓝点
+     · 12 条笔直青色腿，每条在 ~58% 处一个硬膝（膝角 25~45°）
+     · 膝关节与脚尖都是粉色光点，脚尖落点会扩散一圈脉冲
+     · 没有蛛网环、没有网格
+   行为：身体被"导演"拉向当前线索所在工位巡逻；每条脚各自钉在落点，
+   理想位姿偏离超过 L*0.42 才抬脚；全局节流 55ms、最多 6 条同时抬；
+   落点优先吸附到工位卡片边缘 —— 于是每抬一次脚都是一次事件。
+------------------------------------------------------------------- */
+const cv = $('spiderCanvas');
+const g = cv.getContext('2d');
+let W = 1, H = 1, DPR = 1, anchorsCache = null, anchorsAt = 0;
+
+function fitCanvas(){
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width = Math.floor(W * DPR); cv.height = Math.floor(H * DPR);
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  anchorsCache = null;
+}
+fitCanvas();
+window.addEventListener('resize', fitCanvas);
+
+const LEG_DEF = [
+  { a: 152, L: 150, s:  1 }, { a: 120, L: 132, s: -1 }, { a:  88, L: 168, s:  1 },
+  { a:  58, L: 140, s: -1 }, { a:  30, L: 178, s:  1 }, { a:   6, L: 122, s: -1 },
+  { a: -24, L: 158, s:  1 }, { a: -56, L: 136, s: -1 }, { a: -88, L: 172, s:  1 },
+  { a:-120, L: 128, s: -1 }, { a:-152, L: 150, s:  1 }, { a: 178, L: 118, s: -1 }
+].map(c => ({ ...c, L0: c.L * 0.54, L: c.L * 0.54 }));   // 0.62 → 0.54：腿再收一档，避免横穿表格行把数字糊住
+
+const HUB = { x: W * 0.5, y: 130, vx: 0, vy: 0, face: 1, ang: 0, restUntil: 0,
+              dashUntil: 0, dashTo: null, glow: 0 };   // 告警冲刺状态
+window.__hub = HUB;                                                             // 调试用：外部可以读躯干位置
+const legs = LEG_DEF.map((c, i) => ({
+  c,
+  planted: {
+    x: HUB.x + Math.cos(c.a * Math.PI / 180) * c.L,
+    y: HUB.y - Math.sin(c.a * Math.PI / 180) * c.L * 0.92
+  },
+  stepping: false, from: null, to: null, tp: 0, dur: 0.3, cool: i * 0.04,
+  hot: 0, link: 0, whoAnchor: null
+}));
+
+const rings = [], parts = [];
+let lastStep = -9, dwellUntil = 0, targetId = null, lastEvtT = null, roamTarget = null;
+const tele = { buf: [], at: 0 };      // 运动学遥测缓冲（给验收用，不影响渲染）
+// 巡检计数：脚踩进"数据井"就记一笔，这是覆盖率(coverage)的真实来源
+const visit = { wells: new Set(), reads: 0, at: 0 };
+const webs = [];                      // （已弃用：视频里那些线是腿，不是丝）
+const trails = [];                    // 飞行残影
+const ghosts = [];                    // 奔跑残影：躯干拖影
+const flowCache = { at: 0, nodes: [] };
+let sndOn = false, actx = null;       // 音效开关（必须由用户点一下才能出声）
+// 装饰线开关 + 滚动失效时间戳。
+// 滚动必须立刻让锚点缓存失效：画布是 fixed 的，锚点是视口坐标，
+// 页面一滚这些坐标就作废了。不失效的话腿/网络线会吊着旧坐标被"拉长"（这就是实测到的 bug）。
+let linesOn = true, scrollInvAt = 0, regripT = -99;
+const alerts = [];                    // 告警环：事件触发时从工位扩散出去的红色脉冲
+const rowPings = [];                  // 落在具体数值行时，在那一行画一道短下划线
+const grabs = [];                     // 触角最近读到的真实文字（每条都来自页面 DOM）
+const bub = { text: '', at: 0, until: 0, alpha: 0 };   // 气泡台词
+
+function stationAnchors(){
+  const now = performance.now();
+  if(anchorsCache && now - anchorsAt < 600) return anchorsCache;
+  anchorsAt = now;
+  const cards = {}, pts = [], roam = [];
+  document.querySelectorAll('.st').forEach(el => {
+    const r = el.getBoundingClientRect();
+    const st = ((S && S.stations) || {})[el.dataset.id] || {};
+    cards[el.dataset.id] = {
+      x: r.left + r.width / 2, y: r.top + r.height / 2, top: r.top,
+      left: r.left, right: r.right, bottom: r.bottom,
+      state: st.state || 'idle'
+    };
+    roam.push({ x: r.left + r.width / 2, y: r.top - 26, wide: false });
+    pts.push(
+      { x: r.left + 10, y: r.top - 3 }, { x: r.right - 10, y: r.top - 3 },
+      { x: r.left + 10, y: r.bottom + 3 }, { x: r.right - 10, y: r.bottom + 3 },
+      { x: r.left + r.width / 2, y: r.top - 3 }
+    );
+  });
+  // 其余面板也给落点：这样它能爬满整个屏幕，而不只是工位区
+  const panels = [];
+  document.querySelectorAll('.panel').forEach(el => {
+    const r = el.getBoundingClientRect();
+    if(r.width < 120 || r.top < 0) return;
+    const fx = r.left + r.width * (0.18 + Math.random() * 0.64);
+    roam.push({ x: fx, y: r.top - 22, wide: true });
+    panels.push({ x: r.left + r.width * 0.5, y: r.top + r.height * 0.5,
+                  w: r.width, h: r.height, left: r.left, top: r.top });
+    pts.push({ x: r.left + 14, y: r.top - 3 }, { x: r.right - 14, y: r.top - 3 },
+             { x: r.left + r.width / 2, y: r.top - 3 });
+  });
+  // 细粒度落点：直接落在"数字/文字"上（视频里脚尖站在 BOTS PER +57.32 这种值上）
+  const details = [];
+  const DETAIL_SEL = '#stations .sc, #stations .msg, .kpi .v, #leads tbody td, #positions tbody td, #feed .ev .x, #factor-body .fxrow .v, #fx-plan .fxrow .v, #fx-verdict .fxrow .v';
+  document.querySelectorAll(DETAIL_SEL).forEach(el => {
+    const r = el.getBoundingClientRect();
+    if(r.width < 6 || r.height < 6 || r.width > 520) return;
+    if(r.top < 0 || r.bottom > H) return;
+    // 落点上带"读什么"：只有真的把值读下来，触角才算在采集数据，不是摆样子
+    let v = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if(!v || v.length > 26) return;                  // 长段落不收，只收数字/短结论
+    if(/^[—\-–·\s]+$/.test(v)) return;               // 占位符"——"不是数据，别当成读数
+    let lb = '';
+    try{
+      const rowEl = el.closest('.fxrow, tr, .kv, .row');
+      const first = rowEl && rowEl.firstElementChild;
+      if(first && first !== el){ lb = (first.textContent || '').replace(/\s+/g, ' ').trim(); }
+    }catch(e){}
+    if(lb && lb.length > 12) lb = lb.slice(0, 12);
+    details.push({ x: r.right - 3, y: r.top + r.height * 0.62, row: true,
+                   txt: (lb ? lb + ' ' : '') + v });
+  });
+  // 数据井：蜘蛛"巡到哪块"的判定框（覆盖率的分子分母都从这里来）
+  // 只算当前可视区内的井：画布是 fixed 的，视口外的面板物理上够不着，
+  // 把它们算进分母只会让"全覆盖"变成永远做不到的指标。
+  const wells = [];
+  [['station', '#stations'], ['chain', '#chain'], ['chart', '#chart'], ['feed', '#feed'],
+   ['factors', '#factor-body'], ['plan', '#fx-plan'], ['verdict', '#fx-verdict'],
+   ['positions', '#positions'], ['leads', '#leads'], ['kpi', '.kpis']].forEach(([id, sel]) => {
+    const el = document.querySelector(sel);
+    if(!el) return;
+    const r = el.getBoundingClientRect();
+    const y0 = Math.max(r.top, 0), y1 = Math.min(r.bottom, H);
+    if(r.width < 40 || y1 - y0 < 24) return;       // 视口外 / 太扁的不要
+    wells.push({ id, x0: r.left, y0, x1: r.right, y1 });
+  });
+  // 禁压区：不是"数据井"（蜘蛛不读它），但气泡与随身标签不许压 —— 压上去就把判断挡住了。
+  // 刻意不并进 wells：那是覆盖率的分母，混进去会让"覆盖 5/6"变成永远到不了的 5/7。
+  const blocks = [];
+  ['#fx-loop', '#fx-scan', '.kpis'].forEach(sel => {
+    const el = document.querySelector(sel);
+    if(!el) return;
+    const r = el.getBoundingClientRect();
+    const y0 = Math.max(r.top, 0), y1 = Math.min(r.bottom, H);
+    if(r.width < 40 || y1 - y0 < 12) return;
+    blocks.push({ id: sel, x0: r.left, y0, x1: r.right, y1 });
+  });
+  return (anchorsCache = { cards, pts, roam, panels, details, wells, blocks });
+}
+
+function activeStationId(){
+  const l = ((S && S.leads) || [])[0];
+  if(!l) return 'SCAN';
+  if(l.state === 'FILLED') return 'FILLS';
+  if(l.state === 'STAGED') return 'SIZE';
+  if(l.state === 'PASSED') return 'SOCIAL';
+  if(l.state === 'REJECTED') return 'VET';
+  return 'SCAN';
+}
+
+function nearestPt(p, r, pts){
+  let best = null, bd = r * r;
+  for(let i = 0; i < pts.length; i++){
+    const dx = pts[i].x - p.x, dy = pts[i].y - p.y, d2 = dx * dx + dy * dy;
+    if(d2 < bd){ bd = d2; best = pts[i]; }
+  }
+  return best;
+}
+
+// 躯干在哪块井里（或离哪块最近），触角就只读那块的值——"站在哪张表上就读哪张表"
+function wellAt(A, x, y){
+  const wl = A.wells || [];
+  for(const w of wl){
+    if(x >= w.x0 && x <= w.x1 && y >= w.y0 && y <= w.y1) return w.id;
+  }
+  let best = null, bd = 240;
+  for(const w of wl){
+    const cx = (w.x0 + w.x1) / 2, cy = (w.y0 + w.y1) / 2;
+    const d = Math.hypot(cx - x, cy - y);
+    if(d < bd){ bd = d; best = w.id; }
+  }
+  return best;
+}
+
+// 脚落到数值行上时，把"具体读到的那一条"取回来：触角的读数来自页面真实文字
+// wellId 给了就只在"当前这块井"里取，避免站在 RISK 上读到的却是顶部 KPI 的数字
+function readAt(A, p, r, wellId){
+  const lim = (r || 8) * (r || 8);
+  const box = wellId ? (A.wells || []).find(w => w.id === wellId) : null;
+  let best = null, bd = lim;
+  for(const d of (A.details || [])){
+    if(!d.txt) continue;
+    if(box && (d.x < box.x0 - 4 || d.x > box.x1 + 4 || d.y < box.y0 - 4 || d.y > box.y1 + 4)) continue;
+    const dx = d.x - p.x, dy = d.y - p.y, d2 = dx * dx + dy * dy;
+    if(d2 < bd){ bd = d2; best = d.txt; }
+  }
+  return best || '';
+}
+
+function legIdeal(c){
+  const a = c.a * Math.PI / 180, L = c.L, s = c.s;
+  let dx = Math.cos(a) * L * (s > 0 ? 1 : 0.96);
+  let dy = -Math.sin(a) * L * 0.92;
+  const d = Math.hypot(dx, dy), maxR = L * 1.28;
+  if(d > maxR){ dx *= maxR / d; dy *= maxR / d; }
+  const limX = dx > 0 ? (W - 16 - HUB.x) : (HUB.x - 16);
+  const limY = dy > 0 ? (H - 16 - HUB.y) : (HUB.y - 16);
+  const kx = Math.abs(dx) > 1e-3 ? limX / Math.abs(dx) : 9;
+  const ky = Math.abs(dy) > 1e-3 ? limY / Math.abs(dy) : 9;
+  const k = Math.max(0.32, Math.min(1, kx, ky));
+  return { x: HUB.x + dx * k, y: HUB.y + dy * k };
+}
+
+function stepPos(leg){
+  if(!leg.stepping) return leg.planted;
+  const p = leg.tp, lift = Math.sin(Math.PI * p) * 10;
+  return {
+    x: leg.from.x + (leg.to.x - leg.from.x) * p,
+    y: leg.from.y + (leg.to.y - leg.from.y) * p - lift
+  };
+}
+
+// 到访目标 = 真实事件的物理投影：不按时间瞎走，只有"有新数据/有冲突/数据过期"才动。
+// 顺序仍按漏斗（数据源 → 发现 → 审查 → 资金 → 仓位 → 成交 → 风控），越靠上游越先处理。
+const PATROL = ['CRAWLER','SCAN','VET','SOCIAL','SIZE','FILLS','RISK'];
+let busQueue = [], targetWhy = '待机', patrolPos = 0;
+let seenConflicts = 0, seenFresh = true;
+
+// 工位卡之外的落点（因子板/仓位/判决/线索/持仓这些面板也要能去）
+const WELL_OF = { FACTORS:'factors', PLAN:'plan', VERDICT:'verdict', LEADS:'leads',
+                  POSITIONS:'positions', CHART:'chart', FEED:'feed', KPI:'kpi' };
+
+function anchorPoint(A, id){
+  const c = A.cards[id];
+  let p = null;
+  if(c) p = { x: c.x, y: c.top - 26 };                    // 工位卡：停在标题上方
+  else {
+    const w = WELL_OF[id] ? (A.wells || []).find(x => x.id === WELL_OF[id]) : null;
+    if(w){
+      // 顶部 KPI 例外：那一排是权益/浮盈这些大数字，躯干停在"上沿"正好压住数字。
+      // 实测几何：KPI 带 28~69、工具栏 87~122、工位卡 147 起 —— 中间只有 24px 的空白带，
+      // 躯干高 12px，正好落在"工具栏与工位卡之间"，脚再往上抬着读数字。
+      let y = Math.max(10, w.y0 - 12);
+      if(w.id === 'kpi'){
+        const st = (A.wells || []).find(x => x.id === 'station');
+        y = st ? (st.y0 - 12) : (w.y1 + 60);
+      }
+      p = { x: (w.x0 + w.x1) / 2, y };
+    }
+  }
+  if(!p) return null;
+  // 面板被滚出视口时（例如用户往下滚了），落点会被算到屏幕外：夹回可视带，别让它飞到 y<0
+  p.x = Math.min(W - 24, Math.max(24, p.x));
+  p.y = Math.min(H - 32, Math.max(32, p.y));
+  return p;
+}
+
+function queueStation(id, why){
+  if(!id) return;
+  lastEvAt = performance.now();
+  busQueue = busQueue.filter(x => x.id !== id);       // 同一个工位不排队两次
+  busQueue.push({ id, why: why || '新数据' });
+  if(busQueue.length > 6) busQueue.shift();
+}
+
+// 只从真实数据里取目标：fresh=false / 因子冲突 / 新事件队列
+// 弱调度用的"上次到访时间"。after/gap 挂在 window.__sched 上，验收时可临时缩短，生产默认 90/45 秒
+const lastVisit = {};
+const SCHED = window.__sched = (window.__sched || { after: 90, gap: 45, quiet: 60, n: 0, last: '' });
+// 验收钩子：?sweep=12,6,3 依次是 多久没拜访才补巡 / 两次补巡最短间隔 / 多久没事件算"安静"，默认 90/45/60 秒
+(function(){
+  try{
+    const q = new URLSearchParams(location.search).get('sweep');
+    if(q){ const a = q.split(',');
+      if(+a[0] > 0) SCHED.after = +a[0];
+      if(+a[1] > 0) SCHED.gap = +a[1];
+      if(+a[2] > 0) SCHED.quiet = +a[2]; }
+  }catch(e){}
+})();
+// 权重：用户更关心的面板（持仓/线索/风控/审查）先被补 —— 谁的"加权年龄"最大先去谁
+const SWEEP_W = { POSITIONS: 2.0, LEADS: 2.0, RISK: 1.6, VET: 1.5, SIZE: 1.3, FILLS: 1.3,
+                  PLAN: 1.2, FACTORS: 1.2, VERDICT: 1.1, CHART: 1.1 };
+let sweepInit = false, sweepAt = 0, lastEvAt = 0;
+
+// 只补"加权年龄最大、且落点当前可见"的那一块；补完 gap 秒内不再补
+function staleTarget(A, now){
+  SCHED.calls = (SCHED.calls || 0) + 1;
+  const ids = PATROL.concat(['FACTORS', 'PLAN', 'VERDICT', 'LEADS', 'POSITIONS']);
+  if(!sweepInit){
+    ids.forEach(id => { lastVisit[id] = now; });
+    sweepInit = true;
+    return null;
+  }
+  if(now - sweepAt < SCHED.gap * 1000) return null;
+  // 还有事件在流的时候一律不补巡：补巡只在"确实没动静"时兜底，免得看起来又像乱跑
+  if(now - (lastEvAt || 0) < SCHED.quiet * 1000) return null;
+  let best = null, bestScore = SCHED.after, bestAge = 0, bestW = 1;
+  ids.forEach(id => {
+    if(!anchorPoint(A, id)) return;                     // 视口外 / 没有落点的面板直接跳过
+    const age = (now - (lastVisit[id] || 0)) / 1000;
+    const w = SWEEP_W[id] || 1;
+    const score = age * w;                              // 加权年龄：权重高的更早到期
+    if(score > bestScore){ bestScore = score; best = id; bestAge = age; bestW = w; }
+  });
+  SCHED.oldest = best || '';
+  if(!best) return null;
+  sweepAt = now;
+  SCHED.n = (SCHED.n || 0) + 1;
+  SCHED.last = best;
+  return { id: best, why: '补巡（' + Math.round(bestAge) + 's 未到访'
+           + (bestW > 1 ? '·权重 ' + bestW : '') + '）' };
+}
+
+function dataTarget(A){  const fx = window.__fx;
+  if(fx && fx.fresh === false && seenFresh !== false){
+    seenFresh = false;
+    queueStation('CRAWLER', '数据过期');
+  } else if(!fx || fx.fresh !== false){
+    seenFresh = true;
+  }
+  const cf = tele.conflicts || 0;
+  if(cf > 0 && cf !== seenConflicts){ seenConflicts = cf; queueStation('VET', '因子冲突 ' + cf + ' 项'); }
+  if(cf === 0) seenConflicts = 0;
+
+  // 排队顺序：数据源 → 因子板 → 发现 → 审查……（因子板要排在 SCAN 前面，否则永远轮不到它）
+  const ORDER = ['CRAWLER','FACTORS','PLAN','SCAN','VET','SOCIAL','SIZE','FILLS','RISK'];
+  busQueue.sort((a, b) => (ORDER.indexOf(a.id) + 1 || 99) - (ORDER.indexOf(b.id) + 1 || 99));
+  const first = busQueue.shift();
+  if(!first) return null;
+  return anchorPoint(A, first.id) ? first : null;
+}
+
+function hubTarget(A, force){
+  const now = performance.now();
+  const want = dataTarget(A);
+  if(want){
+    const p = anchorPoint(A, want.id);
+    if(p){
+      roamTarget = p;
+      targetId = want.id;
+      targetWhy = want.why;
+      patrolPos = Math.max(0, PATROL.indexOf(want.id) + 1);
+      dwellUntil = now + 6000;
+      lastVisit[want.id] = now;
+    }
+    return roamTarget;
+  }
+
+  // 弱调度（不是巡游）：某块面板/工位长期没被到访才补一次，一次只补一块，
+  // 补完 45 秒内不再补 —— 目的是别让冷门面板永远没人看，同时不回到随机乱跑。
+  const stale = staleTarget(A, now);
+  if(stale){
+    roamTarget = anchorPoint(A, stale.id);
+    targetId = stale.id;
+    targetWhy = stale.why;
+    patrolPos = Math.max(0, PATROL.indexOf(stale.id) + 1);
+    dwellUntil = now + 5000;
+    lastVisit[stale.id] = now;
+    return roamTarget;
+  }
+
+  // 没有新东西、也没有该补的：原地待机，不巡游、不随机换点
+  if(!roamTarget){
+    roamTarget = anchorPoint(A, 'FACTORS') || anchorPoint(A, 'SCAN') || { x: W * 0.5, y: 120 };
+    targetId = 'FACTORS';
+    targetWhy = '待机（无新数据）';
+    patrolPos = 0;
+  }
+  return roamTarget;
+}
+
+function pulseLeg(who, strong){
+  const A = stationAnchors();
+  const card = A.cards[who];
+  if(!card) return;
+  let best = null, bd = 1e9;
+  legs.forEach(l => {
+    const d = Math.hypot(l.planted.x - card.x, l.planted.y - card.y);
+    if(d < bd){ bd = d; best = l; }
+  });
+  if(best){
+    best.hot = 1; best.link = 1;
+    best.whoAnchor = { x: card.x, y: card.bottom + 4 };
+  }
+
+  if(!strong) return;
+  // 告警冲刺：锁定工位、冲刺、身体压低、十二腿全部重新落脚
+  const t = performance.now() / 1000;
+  HUB.dashUntil = t + 1.7;
+  HUB.dashTo = { x: card.x, y: card.top - 20 };
+  HUB.glow = 1;
+  alerts.push({ x: card.x, y: card.y, p: 0 });
+  if(alerts.length > 6) alerts.shift();
+  bub.text = who + ' 报警，我过去了'; bub.at = t; bub.until = t + 2.6;
+  legs.forEach((l, i) => {
+    l.from = { x: l.planted.x, y: l.planted.y };
+    const ideal = legIdeal(l.c);
+    l.to = nearestPt(ideal, l.c.L * 0.78, A.details || []) || ideal;   // 重落也落在数值行上
+    l.tp = 0; l.stepping = true; l.dur = 0.20 + i * 0.02;
+    l.onSnap = false; l.cool = 0.24;
+  });
+}
+
+// 气泡台词：全部来自真实状态，不编故事
+function spiel(){
+  const l = ((S && S.leads) || [])[0];
+  const fr = S && S.freshness;
+  const led = S && S.ledger;
+  if(led && led.ok === false) return '账本不平，我停在这里';
+  if(fr && fr.unknown) return '不知道这批数据是哪天的';
+  if(fr && fr.stale && fr.inSession) return '数据停在 ' + (fr.asof || '—') + '，我瞎了';
+  // VET 刚踩了硬门槛（30 秒内）：优先说"这单为什么不能发"，那句是后端按 checks 排出来的，
+  // 数字原样来自 check.detail。只抢 gate 这一类台词，其余照旧让位给资金流/冲突。
+  const ve = S && S.stations && S.stations.VET;
+  if(ve && ve.why && ve.whyKind === 'gate'
+     && (Date.now() / 1000 - (ve.whyAt || 0)) < 30) return ve.why;
+  const fx = window.__fx;
+  if(fx){
+    if(fx.fresh === false) return '数据停在 ' + (fx.asof || '—') + '，我瞎了';
+    if(fx.cross && fx.cross.count) return '冲突：' + fx.cross.items[0];
+    if(fx.volume && fx.volume.diverge) return '价新高但量在退，这事不对';
+    if(fx.volume && fx.volume.vr5 >= 2 && (fx.pct || 0) < 0) return '放量下跌，出货嫌疑';
+    if(fx.tradable && !fx.tradable.ok && fx.tradable.reasons && fx.tradable.reasons.length)
+      return '这票不可成交：' + fx.tradable.reasons[0];
+    if(tele.chg && Date.now() - (tele.chgT || 0) < 45000) return '跟上次比：' + tele.chg;
+    if(fx.structure && fx.structure.flags && fx.structure.flags.length)
+      return fx.code + '：' + fx.structure.flags.join('·');
+  }
+  if(l){
+    if(l.state === 'STAGED')   return '一张待你点头的单：' + l.code;
+    if(l.state === 'APPROVED') return l.code + ' 批了，去成交';
+    if(l.state === 'REJECTED') return l.code + ' 不合规，否了';
+    if(l.state === 'PASSED')   return l.code + ' 资金没来，先放过';
+    if(l.state === 'FILLED')   return l.code + ' 已成交，盯止损';
+    if(l.state === 'SCANNED' || l.state === 'VETTED') return '在核 ' + l.code + ' 的证据';
+  }
+  if(fr && fr.stale) return '收盘数据（' + (fr.asof || '—') + '），等开盘';
+  return '在读 ' + ((S && S.stats && S.stats.scanned) || 0) + ' 只票的盘口';
+}
+
+// 资金流触点网络：以 SOCIAL 工位为心，把线索里的主力净流入做成节点
+// （视频里那张网络图在 A 股没有对应物，这里换成"钱往哪去"的真实数据）
+function flowNodes(){
+  const now = performance.now();
+  if(now - flowCache.at < 1500) return flowCache.nodes;
+  flowCache.at = now;
+  const A = stationAnchors();
+  const so = A.cards.SOCIAL;
+  if(!so) return (flowCache.nodes = []);
+  // 资金流占比取线索里存下的真实值：cand.mainNet / cand.amount
+  const ls = ((S && S.leads) || []).map(l => {
+    const c = l.cand || {};
+    let f = null;
+    if(c.mainNet != null && c.amount) f = Number(c.mainNet) / Number(c.amount);
+    else if(l.social && l.social.flowRatio != null) f = Number(l.social.flowRatio);
+    return { code: l.code, name: l.name, f: (f != null && isFinite(f)) ? f : null };
+  }).filter(l => l.f != null).slice(0, 6);
+  const nodes = ls.map((l, i) => {
+    const a = -Math.PI / 2 + i * (Math.PI * 2 / Math.max(6, ls.length));
+    const rr = 118 + (i % 3) * 42;
+    const f = l.f;
+    return {
+      x: so.x + Math.cos(a) * rr,
+      y: so.y + Math.sin(a) * rr * 0.60,
+      w: Math.min(3.2, 0.7 + Math.abs(f) * 14),
+      up: f > 0
+    };
+  });
+  return (flowCache.nodes = nodes);
+}
+
+function beep(kind){
+  if(!sndOn || !actx) return;
+  tele.beeps = (tele.beeps || 0) + 1;
+  const f = kind === 'alert' ? 880 : kind === 'warn' ? 640 : kind === 'ok' ? 520 : 420;
+  const o = actx.createOscillator(), gn = actx.createGain();
+  o.type = 'square'; o.frequency.value = f;
+  gn.gain.setValueAtTime(0.0001, actx.currentTime);
+  gn.gain.exponentialRampToValueAtTime(kind === 'alert' ? 0.20 : 0.10, actx.currentTime + 0.02);
+  gn.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 0.14);
+  o.connect(gn); gn.connect(actx.destination);
+  o.start(); o.stop(actx.currentTime + 0.16);
+}
+
+function chainPts(hub, F, leg){  const pts = [{ x: hub.x, y: hub.y }];
+  const dx = F.x - hub.x, dy = F.y - hub.y;
+  const d = Math.hypot(dx, dy) || 1;
+  const ux = dx / d, uy = dy / d, px = -uy, py = ux;
+  const bulge = Math.min(64, d * 0.42), s = leg.c.s, r1 = 0.58;   // 膝盖在 58% 处、外凸到膝角 ~30°（对齐视频实测 25~45°）
+  pts.push({ x: hub.x + ux * d * r1 + px * bulge * 0.62 * s,
+             y: hub.y + uy * d * r1 + py * bulge * 0.62 * s - bulge * 0.55 });
+  const r2 = r1 + (1 - r1) * 0.46;
+  pts.push({ x: hub.x + ux * d * r2 - px * bulge * 0.30 * s,
+             y: hub.y + uy * d * r2 - py * bulge * 0.30 * s - bulge * 0.30 });
+  pts.push(F);
+  return pts;
+}
+
+function tick(t){
+  const A = stationAnchors();
+
+  if(!tick.last){ tick.last = t; }
+  const dt = Math.min(0.05, Math.max(0, t - tick.last)); tick.last = t;
+
+  if(HUB.restUntil && t > HUB.restUntil){ HUB.restUntil = 0; tick.force = true; }
+  if(HUB.dashUntil && t >= HUB.dashUntil){ HUB.dashUntil = 0; roamTarget = null; tick.force = true; }
+  const dash = !!HUB.dashUntil;
+  const tgt = dash ? (HUB.dashTo || hubTarget(A, true)) : hubTarget(A, tick.force);
+  tick.force = false;
+
+  const dx = tgt.x - HUB.x, dy = tgt.y - HUB.y;
+  const dist = Math.hypot(dx, dy) || 1;
+  const ux = dx / dist, uy = dy / dist;
+
+  // —— 速度包络：远则冲刺、近则收着进站（实测视频速度中位 ~95px/s、峰值 ~800px/s）——
+  let want = 0;
+  const cap = dash ? 430 : 300;
+  if(dist > 90){ want = Math.min(cap, 110 + dist * (dash ? 0.9 : 0.55)); }
+  else if(dist > 16){ want = dist * 2.9; }
+
+  const k = Math.min(1, dt * (want > 90 ? 9.5 : 5.0));
+  HUB.vx += (ux * want - HUB.vx) * k;
+  HUB.vy += (uy * want - HUB.vy) * k;
+  if(dist < 24){ HUB.vx *= 0.90; HUB.vy *= 0.90; }        // 到站硬刹，不许冲过头
+
+  const spd = Math.hypot(HUB.vx, HUB.vy);
+  HUB.x += HUB.vx * dt;
+  HUB.y += HUB.vy * dt + Math.sin(t * 3.1) * 0.9;         // 爬行时躯干上下起伏
+  // 硬约束：躯干不许钻进顶部 KPI 数字带（权益 / 浮盈 / 累计这些大数字）。
+  // 之前只是"落点"避开，路过时照样从上往下穿过去把数字压住；这里改成位置本身受约束，
+  // 脚还是可以往上探着读，只是身子停在数字带下方。
+  {
+    const wl = A.wells || [];
+    const kp = wl.find(w => w.id === 'kpi');
+    if(kp && HUB.y < kp.y1 + 10) HUB.y = kp.y1 + 10;
+  }
+
+  if(dist < 16 && !HUB.restUntil){                        // 到站：0.12~0.6s，偶尔长停
+    HUB.restUntil = t + 0.12 + Math.random() * (Math.random() < 0.25 ? 1.5 : 0.42);
+  }
+
+  // —— 转身：躯干朝速度方向偏转，限幅 ±40°（视频里朝向标准差 58°，说明它在转身）——
+  if(spd > 10){
+    let d = Math.atan2(HUB.vy, HUB.vx) - HUB.ang;
+    while(d > Math.PI) d -= Math.PI * 2;
+    while(d < -Math.PI) d += Math.PI * 2;
+    d = Math.max(-0.7, Math.min(0.7, d));
+    HUB.ang += d * Math.min(1, dt * 7);
+  }
+  if(Math.abs(HUB.vx) > 1) HUB.face = HUB.vx > 0 ? 1 : -1;
+
+  // —— 飞行态：远距离移动时收腿"飞"过去（视频里就是悬空移动、落地再张开）——
+  if(!HUB.flyOn && dist > 320 && spd > 240 && t > (HUB.flyCool || 0)) HUB.flyOn = true;
+  if(HUB.flyOn && dist < 120){ HUB.flyOn = false; HUB.flyCool = t + 2.5 + Math.random() * 4; }
+  HUB.fly = (HUB.fly || 0) + ((HUB.flyOn ? 1 : 0) - (HUB.fly || 0)) * Math.min(1, dt * 5);
+
+  // —— 气泡：每 3 秒换一句，2.8 秒后淡出 ——
+  if(t - (bub.at || 0) > 3.0){ bub.at = t; bub.text = spiel(); bub.until = t + 2.8; }
+  bub.alpha += ((t < bub.until ? 1 : 0) - bub.alpha) * Math.min(1, dt * 4);
+
+  // 记录轨迹，供事后量"像不像视频"（window.__rec=true 时开）
+  if(window.__rec){
+    window.__trace = window.__trace || [];
+    window.__trace.push({ t: t, x: HUB.x, y: HUB.y, v: spd, a: HUB.ang * 180 / Math.PI });
+    if(window.__trace.length > 3000) window.__trace.shift();
+  }
+
+  // 遥测：把最近 60 秒的运动学指标写进 DOM，外部脚本（含隔离世界）都能读到
+  tele.buf.push({ t: t, x: HUB.x, y: HUB.y, v: spd, a: HUB.ang * 180 / Math.PI });
+  if(tele.buf.length > 600) tele.buf.shift();
+  if(t - tele.at > 1.0){
+    tele.at = t;
+    const b = tele.buf, vs = b.map(p => p.v).sort((p, q) => p - q);
+    const xs = b.map(p => p.x), ys = b.map(p => p.y), as = b.map(p => p.a);
+    const mean = a => a.reduce((p, q) => p + q, 0) / a.length;
+    const sd = a => { const m = mean(a); return Math.sqrt(mean(a.map(v => (v - m) * (v - m)))); };
+    const q = f => vs[Math.floor(f * (vs.length - 1))];
+    const el = document.getElementById('sp-tele');
+    if(el) el.textContent = JSON.stringify({
+      secs: Math.round(t - b[0].t), frames: b.length,
+      spanX: Math.round(Math.max(...xs) - Math.min(...xs)),
+      spanY: Math.round(Math.max(...ys) - Math.min(...ys)),
+      vMed: Math.round(q(0.5)), vP90: Math.round(q(0.9)), vMax: Math.round(q(1)),
+      stillPct: Math.round(100 * vs.filter(v => v < 10).length / vs.length),
+      fastPct: Math.round(100 * vs.filter(v => v > 80).length / vs.length),
+      angSd: Math.round(sd(as)),
+      fly: Math.round((HUB.fly || 0) * 100),
+      net: flowNodes().length,
+      snd: sndOn ? 1 : 0, beeps: tele.beeps || 0,
+      hx: Math.round(HUB.x), hy: Math.round(HUB.y + (HUB.sink || 0)),
+      flyOn: HUB.flyOn ? 1 : 0,
+      feetNow: tele.rowFeetNow || 0, partsN: tele.partsN || 0,
+      grabs: tele.grabs || 0,
+      lastGrab: (tele.lastGrab || '').slice(0, 22),
+      grabAge: tele.lastGrabT ? +(t - tele.lastGrabT).toFixed(1) : -1,
+      grabLog: grabs.slice(-3).map(g => g.txt).join(' / '),
+      charFxN: charFxN, chWalk: tele.chWalk || 0,
+      coverage: tele.coverage || '0/0', coverageLast: tele.coverageLast || '0/0',
+      reads: tele.reads || 0, conflicts: tele.conflicts || 0, stale: tele.stale || 0, chg: tele.chg || '',
+      polls: tele.polls || 0, tgt: (tele.tgt = targetId || '—'),
+      why: (tele.why = targetWhy || ''),
+      patrolPos: (tele.patrolPos = patrolPos || 0),
+      sweeps: (SCHED.n || 0), sweepLast: (SCHED.last || ''),
+      schedCalls: (SCHED.calls || 0), schedOldest: (SCHED.oldest || ''), busQ: (busQueue.length || 0),
+      idleGap: (function(){ const ids = PATROL.concat(['FACTORS']); let oldest = Infinity;
+                 ids.forEach(id => { const at = lastVisit[id]; if(at && at < oldest) oldest = at; });
+                 return oldest === Infinity ? -1 : Math.round((performance.now() - oldest) / 1000); })(),
+      chMood: CHARS.map(c => c.id[0] + charMood(c.id, performance.now() / 1000)[0]).join(''),
+      chW: CHARS.map(c => c.walk ? '1' : '0').join(''),
+      rowFeet: (() => {
+        let n = 0;
+        legs.forEach(l => {
+          for(const d of (A.details || [])){
+            if(Math.abs(d.x - l.planted.x) < 9 && Math.abs(d.y - l.planted.y) < 9){ n++; return; }
+          }
+        });
+        return n;
+      })(),
+      legSpan: Math.round(Math.max(...legs.map(l => Math.hypot(l.planted.x - HUB.x, l.planted.y - HUB.y))))
+    });
+    // K · 巡检面板：蜘蛛自己的状态（不是"感觉在巡检"，是读数）
+    const sk = document.getElementById('fx-scan');
+    // 闭环链路条：采集 → 裁决 → 执行 → 记账 → 回写 → 经验。
+    // 这不是装饰 —— 哪一段数字是 0 或被跳过，瓶颈就在那一段
+    const lp = S.loop || null, fl = document.querySelector('#fx-loop');
+    if(fl && lp){
+      const st2 = lp.skipped || {};
+      fl.innerHTML = '<b>闭环</b>' +
+        `<span class="sep">›</span>采集 第 ${lp.cycle ?? '?'} 轮 / 线索池 ${lp.leads ?? '?'} 条`
+        + (() => {                     // 读数回喂：页面读回来的值有没有和接口对上
+            const rb = S.readback;
+            if(!rb || !rb.code) return ' · 读数 未采集';
+            const bad = (rb.bad || []).length;
+            const mark = bad ? `<span style="color:#ff7a8a">✗${bad}</span>`
+                             : (rb.n ? '<span style="color:#5fe0a1">✓</span>' : '?');
+            return ` · 读数 ${rb.n || 0} 项${mark}（${rb.code}）`;
+          })() +
+        `<span class="sep">›</span>裁决 候选 ${lp.cands ?? '?'} / 过闸 ${lp.vetted ?? '?'}` +
+        (Object.values(st2).some(v => v > 0) ? `（跳过 ${Object.entries(st2).filter(([,v]) => v > 0).map(([k,v]) => ({held:'已持仓',same_day:'当天判过',open:'已在池',bought:'已买'}[k] || k) + ' ' + v).join('、')}）` : '') +
+        `<span class="sep">›</span>执行 待批 ${lp.staged ?? 0} / 持仓 ${lp.positions ?? 0}` +
+        `<span class="sep">›</span>记账 ${(S.equity == null ? '—' : '权益 ' + Math.round(S.equity).toLocaleString())}`
+        + (S.ledger && S.ledger.diff != null ? ` · 平账 ${S.ledger.ok ? '✓' : '✗'}（diff ${S.ledger.diff}）` : ' · 平账 未校验') +
+        `<span class="sep">›</span>回写 已结算 ${(lp.labels && lp.labels.settled != null) ? lp.labels.settled : '?'} 条 / 待结果 ${(lp.labels && lp.labels.pending != null) ? lp.labels.pending : '?'}` +
+        `<span class="sep">›</span>经验 定稿样本 ${lp.labels ? (lp.labels.samples ?? '?') + '/' + (lp.labels.need ?? 300) : '?'}`
+        + (lp.labels && lp.labels.not_final ? `（另有 ${lp.labels.not_final} 条等收盘）` : '');
+    }
+    if(sk) sk.textContent = `覆盖 ${tele.coverage || '0/0'} 块数据井 · 本轮读取 ${tele.reads || 0} 次`
+      + ` · 触角取数 ${tele.grabs || 0} 条${tele.lastGrab ? '（最近：' + tele.lastGrab + '）' : ''}`
+      + (grabs.length ? ' · 读数 ' + grabs.slice(-3).map(g => g.txt).join(' / ') : '')
+      + ` · 冲突 ${tele.conflicts || 0} · 过期井 ${tele.stale ? 1 : 0}`
+      + ` · 复检 ${tele.polls || 0} 次`
+      + ` · 到访 ${tele.tgt || '—'}${tele.why ? '（' + tele.why + '）' : ''}`
+      + (tele.patrolPos ? ` · 漏斗第 ${tele.patrolPos}/${PATROL.length} 站` : '')
+      + ` · 上一轮 ${tele.coverageLast || '—'}`
+      + ` · 最高覆盖 ${Math.max(tele.coverageBestN || 0, tele.coverageNow || 0)}/${(A.wells || []).length}`
+      + ` · 落点数 ${(A.details || []).length}`;
+  }
+
+  // —— 巡检计数：落定的脚踩进哪块数据井，就算"读了一次" ——
+  {
+    const wl = A.wells || [];
+    if(wl.length){
+      if(!visit.at) visit.at = t;
+      for(const l of legs){
+        if(l.stepping) continue;
+        let cur = null;
+        for(const w of wl){
+          if(l.planted.x >= w.x0 && l.planted.x <= w.x1 &&
+             l.planted.y >= w.y0 && l.planted.y <= w.y1){ cur = w.id; break; }
+        }
+        if(cur !== l.well){
+          l.well = cur;
+          if(cur){ visit.wells.add(cur); visit.reads++; }
+        }
+      }
+      // 只数"当前这一份井清单里"踩到过的：面板高度变了（比如多出 D/E 两格）时
+      // 旧 id 会留在 Set 里，直接用 size 会出现 8/7 这种分母小于分子的假读数。
+      const hit = (list) => {
+        let n = 0;
+        visit.wells.forEach(id => { if(list.some(w => w.id === id)) n++; });
+        return n;
+      };
+      if(t - visit.at > 60){          // 60 秒算一轮巡检
+        tele.coverageLast = hit(wl) + '/' + wl.length;
+        if(hit(wl) > (tele.coverageBestN || 0)) tele.coverageBestN = hit(wl);
+        visit.at = t; visit.wells = new Set(); visit.reads = 0;
+      }
+      tele.coverage = hit(wl) + '/' + wl.length;
+      tele.coverageNow = hit(wl);
+      tele.reads = visit.reads;
+    }
+  }
+
+  // —— 步幅随速度伸缩：站着时收腿，冲起来张开；飞行时整只收腿 ——
+  const stretch = (0.82 + 0.36 * Math.min(1, spd / 260) - (dash ? 0.12 : 0)) * (1 - 0.62 * (HUB.fly || 0));
+  legs.forEach(l => { l.c.L = l.c.L0 * stretch; });
+  // 飞行时把脚往回收（不是迈步，是收腿），否则远距离飞行会把腿拉成几百像素的直线
+  if((HUB.fly || 0) > 0.3){
+    const kk = Math.min(1, dt * 7 * (HUB.fly || 0));
+    legs.forEach(l => {
+      if(l.stepping) return;
+      const ideal = legIdeal(l.c);
+      l.planted.x += (ideal.x - l.planted.x) * kk;
+      l.planted.y += (ideal.y - l.planted.y) * kk;
+    });
+  }
+  // 页面刚滚动过：脚一次性"抓住"新位置。
+  // 不这么做的话，躯干按新锚点走、脚还踩在旧坐标上，中间那段就是被拉长的腿（实测就是这个现象）。
+  if(t - regripT < 0.45){
+    legs.forEach(l => {
+      l.stepping = false; l.tp = 1;
+      const ideal = legIdeal(l.c);
+      const snap = nearestPt(ideal, l.c.L * 0.95, A2.details || []);
+      const home = snap || ideal;
+      l.planted.x = home.x; l.planted.y = home.y;
+      l.from = { x: home.x, y: home.y }; l.to = { x: home.x, y: home.y };
+    });
+  }
+  if((HUB.fly || 0) > 0.35 && spd > 120){
+    trails.push({ x: HUB.x, y: HUB.y + (HUB.sink || 0), p: 0 });
+    if(trails.length > 40) trails.shift();
+  }
+  for(let i = trails.length - 1; i >= 0; i--){ trails[i].p += dt / 0.5; if(trails[i].p >= 1) trails.splice(i, 1); }
+  // 奔跑残影：快且没在飞的时候，躯干拖出 2~3 个淡影
+  if(spd > 230 && (HUB.fly || 0) < 0.5){
+    ghosts.push({ x: HUB.x, y: HUB.y + (HUB.sink || 0), ang: HUB.ang, p: 0 });
+    if(ghosts.length > 14) ghosts.shift();
+  }
+  for(let i = ghosts.length - 1; i >= 0; i--){ ghosts[i].p += dt / 0.34; if(ghosts[i].p >= 1) ghosts.splice(i, 1); }
+  HUB.glow = Math.max(0, HUB.glow - dt * 1.3);
+  HUB.sink = (HUB.sink || 0) + ((dash ? 3.5 : 0) - (HUB.sink || 0)) * Math.min(1, dt * 8);
+  for(let i = alerts.length - 1; i >= 0; i--){
+    alerts[i].p += dt / 1.6;
+    if(alerts[i].p >= 1) alerts.splice(i, 1);
+  }
+
+  let stepping = 0;
+  legs.forEach(l => { if(l.stepping) stepping++; });
+
+  const cand = [];
+  legs.forEach((leg, i) => {
+    if(leg.cool > 0){ leg.cool -= dt; return; }
+    if(leg.stepping) return;
+    const ideal = legIdeal(leg.c), L = leg.c.L;
+    const err = Math.hypot(ideal.x - leg.planted.x, ideal.y - leg.planted.y);
+    if(err > L * 0.42) cand.push({ leg, ideal, L, err, i });
+  });
+  cand.sort((a, b) => b.err - a.err);
+
+  if(cand.length && stepping < 6 && (HUB.fly || 0) < 0.55 && t - lastStep > (spd > 130 ? 0.032 : 0.055)){
+    const c = cand[0];
+    // 先找"具体数值行"落点，找不到再退回卡片边缘；够不着的点不要（否则腿被拉直）
+    let rowPt = nearestPt(c.ideal, c.L * 1.05, A.details || []);
+    if(rowPt && Math.hypot(rowPt.x - c.leg.planted.x, rowPt.y - c.leg.planted.y) > c.L * 1.55) rowPt = null;
+    const snap = rowPt || nearestPt(c.ideal, c.L * 0.44, A.pts);
+    c.leg.from = { x: c.leg.planted.x, y: c.leg.planted.y };
+    c.leg.to = snap || c.ideal;
+    c.leg.onSnap = !!snap;
+    c.leg.onRow = !!rowPt;
+    c.leg.dur = (c.err > c.L * 1.35 ? 0.16 : 0.24) + Math.random() * 0.10;
+    c.leg.tp = 0; c.leg.stepping = true;
+    c.leg.cool = 0.18 + (c.i % 3) * 0.06;
+    lastStep = t;
+  }
+
+  legs.forEach(leg => {
+    if(!leg.stepping) return;
+    leg.tp += dt / leg.dur;
+    if(leg.tp >= 1){
+      leg.tp = 1; leg.stepping = false; leg.planted = leg.to;
+      if(leg.onSnap){
+        if(rings.length > 40) rings.shift();
+        if(parts.length > 40) parts.shift();
+        rings.push({ x: leg.to.x, y: leg.to.y, p: 0 });
+        parts.push({ x0: leg.to.x, y0: leg.to.y, p: 0, dur: 0.6 });
+        tele.partsN = (tele.partsN || 0) + 1;   // 累计取数粒子数（给遥测做证据）
+        if(leg.onRow){
+          if(rowPings.length > 24) rowPings.shift();
+          rowPings.push({ x: leg.to.x, y: leg.to.y, p: 0 });
+          // 真的把那条值读下来：记在腿上 + 记总量 + 记最近一条（页面文字，不是我编的）
+          const g = readAt(A, leg.to, 10, wellAt(A, HUB.x, HUB.y));
+          if(g){
+            leg.grab = g; leg.grabT = t;
+            tele.grabs = (tele.grabs || 0) + 1;
+            tele.lastGrab = g; tele.lastGrabT = t;
+            grabs.push({ txt: g, at: t });
+            if(grabs.length > 6) grabs.shift();
+          }
+        }
+      }
+    }
+    leg.hot = Math.max(0, leg.hot - dt * 2.2);
+    leg.link = Math.max(0, leg.link - dt * 1.1);
+  });
+
+  // —— 取完就收腿 ——
+  // 原来脚落到数值行之后会一直留在那儿，12 条腿就变成 12 条横在卡片上的长线（用户说的"好多线"）。
+  // 现在：读到的瞬间伸出去，读完 0.4 秒内收回身下的常态姿势；
+  // 同时只有"当下正在读"的那一两条腿是长的 —— 既贴近视频里趴着的样子，又没把文字压住。
+  legs.forEach(l => {
+    if(l.stepping) return;
+    const ideal = legIdeal(l.c);
+    const d = Math.hypot(ideal.x - l.planted.x, ideal.y - l.planted.y);
+    if(d > l.c.L * 0.50){
+      const k = Math.min(1, dt * 2.2);
+      l.planted.x += (ideal.x - l.planted.x) * k;
+      l.planted.y += (ideal.y - l.planted.y) * k;
+    }
+  });
+
+  // 每帧算一次"刚才有哪几只脚读到了数值行"（给随身标签用）。
+  // 脚现在读完 0.4 秒就收回身下，所以不能再用"此刻谁踩在行上"计数——那会恒为 0。
+  {
+    let rf = 0;
+    legs.forEach(l => { if(l.grabT && t - l.grabT < 1.1) rf++; });
+    tele.rowFeetNow = rf;
+  }
+
+  for(let i = parts.length - 1; i >= 0; i--){ parts[i].p += dt / parts[i].dur; if(parts[i].p >= 1) parts.splice(i, 1); }
+  for(let i = rings.length - 1; i >= 0; i--){ rings[i].p += dt / 0.7; if(rings[i].p >= 1) rings.splice(i, 1); }
+  for(let i = rowPings.length - 1; i >= 0; i--){ rowPings[i].p += dt / 0.8; if(rowPings[i].p >= 1) rowPings.splice(i, 1); }
+}
+
+/* ---- 工位上的小人：视频里每张桌后坐一个，这里坐在卡片右下角 ---- */
+const CHARS = [
+  { id: 'CHIEF',   shape: 'circle', c: '#3f8dff', boss: true },
+  { id: 'SCAN',    shape: 'circle', c: '#3f8dff' },
+  { id: 'VET',     shape: 'box',    c: '#ff4b5c' },
+  { id: 'SOCIAL',  shape: 'ghost',  c: '#eaf1ff' },
+  { id: 'SIZE',    shape: 'circle', c: '#ff9a3d', ear: true },
+  { id: 'FILLS',   shape: 'tri',    c: '#ff5fa2' },
+  { id: 'RISK',    shape: 'box',    c: '#ff8a5c' },
+  { id: 'CRAWLER', shape: 'circle', c: '#33e39a' }
+];
+const charFx = {};          // id -> { type, at }：最近一次真实事件给它的动作
+let charFxN = 0;
+let lastCharT = 0;          // 小人走动用到的上一帧时间
+
+function charMood(id, t){
+  const fx = charFx[id];
+  if(fx && t - fx.at < 2.2) return fx.type;
+  if(id === 'SCAN' || id === 'CRAWLER') return 'typing';
+  return 'idle';
+}
+
+function drawChar(cx, cy, ch, t, i, mood){
+  const bob = mood === 'walk' ? Math.sin(t * 9 + i) * 1.7 : Math.sin(t * 2.2 + i * 1.3) * 1.1;
+  g.fillStyle = 'rgba(0,0,0,.45)';                       // 影子
+  g.beginPath(); g.ellipse(cx, cy + 9, 8, 2.4, 0, 0, 7); g.fill();
+  const y = cy + bob;
+  g.save(); g.translate(cx, y);
+  g.shadowColor = ch.c; g.shadowBlur = 6;
+  g.fillStyle = ch.c;
+  if(ch.shape === 'box'){
+    g.fillRect(-6.5, -7, 13, 13);
+  } else if(ch.shape === 'tri'){
+    g.beginPath(); g.moveTo(0, -8); g.lineTo(7.5, 5); g.lineTo(-7.5, 5); g.closePath(); g.fill();
+  } else if(ch.shape === 'ghost'){
+    g.beginPath(); g.arc(0, -3, 7, Math.PI, 0); g.lineTo(7, 6);
+    g.lineTo(3.5, 3.5); g.lineTo(0, 6); g.lineTo(-3.5, 3.5); g.lineTo(-7, 6);
+    g.closePath(); g.fill();
+  } else {
+    g.beginPath(); g.arc(0, -2, 6.8, 0, 7); g.fill();
+  }
+  g.shadowBlur = 0;
+  if(ch.ear){
+    g.beginPath(); g.moveTo(-5, -6); g.lineTo(-8.5, -12); g.lineTo(-1.5, -9); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(5, -6); g.lineTo(8.5, -12); g.lineTo(1.5, -9); g.closePath(); g.fill();
+  }
+  if(ch.boss){                                            // 皇冠 = 主管
+    g.fillStyle = '#ffd45e';
+    g.beginPath(); g.moveTo(-5, -7); g.lineTo(-5, -12); g.lineTo(-2, -9.5);
+    g.lineTo(0, -13.5); g.lineTo(2, -9.5); g.lineTo(5, -12); g.lineTo(5, -7);
+    g.closePath(); g.fill();
+  }
+  g.fillStyle = ch.shape === 'box' ? '#ffd9dc' : '#0a1420';  // 眼
+  g.fillRect(-3.7, -4.8, 2.4, 2.4); g.fillRect(1.3, -4.8, 2.4, 2.4);
+  if(ch.shape === 'box'){ g.fillRect(-2.6, -0.2, 5.2, 1.1); }
+  g.restore();
+  g.save(); g.translate(cx, y);
+  if(mood === 'walk'){                                    // 走路：两条小腿交替
+    const k = Math.sin(t * 9 + i);
+    g.strokeStyle = 'rgba(150,230,250,.8)'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(-3, 5.5); g.lineTo(-3 + k * 3.2, 10); g.stroke();
+    g.beginPath(); g.moveTo(3, 5.5); g.lineTo(3 - k * 3.2, 10); g.stroke();
+  } else if(mood === 'typing'){
+    const k = Math.sin(t * 7.5 + i) * 1.6;
+    g.strokeStyle = 'rgba(160,240,255,.85)'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(-7, 0); g.lineTo(-9, 3 + k); g.stroke();
+    g.beginPath(); g.moveTo(7, 0); g.lineTo(9, 3 - k); g.stroke();
+  } else if(mood === 'stamp'){
+    g.fillStyle = 'rgba(255,60,90,.85)'; g.fillRect(-3, -18, 8, 8);
+    g.fillStyle = 'rgba(255,205,215,.95)'; g.fillRect(-1.4, -16, 1.6, 1.6);
+  } else if(mood === 'raise'){
+    g.strokeStyle = 'rgba(255,150,170,.95)'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(6, -3); g.lineTo(8, -9); g.stroke();
+    g.fillStyle = 'rgba(255,60,90,.95)'; g.fillRect(6, -16, 3.2, 7);
+  } else if(mood === 'fire'){
+    const k = (t * 2.6 + i) % 1;
+    ['#ffd45e', '#ff8a5c', '#8dffc8'].forEach((c, n) => {
+      g.globalAlpha = 1 - k; g.fillStyle = c;
+      g.beginPath(); g.arc((n - 1) * 4.5, -14 - k * 12, 1.5, 0, 7); g.fill();
+    });
+    g.globalAlpha = 1;
+  }
+  g.restore();
+}
+
+/* ---- B3：点小人看它这轮干了什么（面板内容全部来自真实状态，不是写死的文案）---- */
+function placeCharButtons(chars){
+  let wrap = document.getElementById('charbtns');
+  if(!wrap){ wrap = document.createElement('div'); wrap.id = 'charbtns'; document.body.appendChild(wrap); }
+  chars.forEach(ch => {
+    if(!ch.px) return;
+    let b = wrap.querySelector('[data-ch="' + ch.id + '"]');
+    if(!b){
+      b = document.createElement('div');
+      b.className = 'charbtn';
+      b.dataset.ch = ch.id;
+      b.title = ch.id + ' · 点我看它这轮的证据';
+      b.onclick = ev => { ev.stopPropagation(); showCharPanel(ch.id, b); };
+      wrap.appendChild(b);
+    }
+    b.style.left = (ch.px - 15) + 'px';
+    b.style.top = (ch.py - 15) + 'px';
+    b.style.display = (ch.card && ch.card.top > H) ? 'none' : 'block';
+  });
+  // 遥测：证明它们真的在走
+  let walking = 0;
+  chars.forEach(ch => { if(ch.walk) walking++; });
+  tele.chWalk = walking;
+}
+
+function showCharPanel(id, anchor){
+  let p = document.getElementById('charpanel');
+  if(!p){ p = document.createElement('div'); p.id = 'charpanel'; document.body.appendChild(p); }
+  const s = (S && S.stations && S.stations[id]) || {};
+  const ev = ((S && S.events) || []).find(e => e.who === id);
+  const staged = ((S && S.leads) || []).find(l => l.state === 'STAGED');
+  p.innerHTML = `
+    <div class="cp-h"><b>${id} · ${s.state || 'idle'}</b><span id="cp-x">✕</span></div>
+    <div class="cp-s"><div class="cp-k">正在做</div><div class="cp-v">${s.msg || '待机中'}</div></div>
+    <div class="cp-s"><div class="cp-k">刚做完</div><div class="cp-v">${ev ? (ev.t + ' · ' + ev.text) : '这轮还没有它的事件'}</div></div>
+    <div class="cp-s"><div class="cp-k">等你点头</div><div class="cp-v">${staged ? (staged.code + ' ' + (staged.name || '') + '（' + staged.state + '）') : '没有待批的单'}</div></div>`;
+  p.style.display = 'block';
+  const r = anchor.getBoundingClientRect();
+  p.style.left = Math.max(8, Math.min(Math.max(320, W) - 312, r.left - 135)) + 'px';
+  p.style.top = Math.min(Math.max(300, H) - 170, r.bottom + 8) + 'px';
+  p.querySelector('#cp-x').onclick = () => { p.style.display = 'none'; };
+}
+
+document.addEventListener('click', e => {
+  const p = document.getElementById('charpanel');
+  if(!p || p.style.display !== 'block') return;
+  if(p.contains(e.target)) return;
+  if(e.target && e.target.closest && e.target.closest('.charbtn')) return;
+  p.style.display = 'none';
+}, true);
+
+function paint(t){
+  g.clearRect(0, 0, W, H);
+
+  // 资金流触点网络（画在最底层，淡到不抢文字；可用"装饰线"按钮整体关掉）
+  const A2 = stationAnchors();
+  const soCard = A2.cards.SOCIAL;
+  if(soCard && linesOn){
+    const nodes = flowNodes();
+    nodes.forEach((n, i) => {
+      g.strokeStyle = n.up ? 'rgba(80,240,160,.20)' : 'rgba(255,90,110,.18)';
+      g.lineWidth = n.w + 0.5;
+      g.beginPath(); g.moveTo(soCard.x, soCard.y);
+      g.quadraticCurveTo((soCard.x + n.x) / 2, (soCard.y + n.y) / 2 + 18, n.x, n.y);
+      g.stroke();
+      g.fillStyle = n.up ? 'rgba(110,255,190,.45)' : 'rgba(255,110,130,.4)';
+      g.beginPath(); g.arc(n.x, n.y, 1.6 + n.w, 0, 7); g.fill();
+      // 沿边的脉冲：谁在吸钱，一眼能看出方向（只给钱最多的前 3 条，别的别闪）
+      if(i < 3){
+        const p = (t * 0.30 + i * 0.4) % 1;
+        const px = soCard.x + (n.x - soCard.x) * p;
+        const py = soCard.y + (n.y - soCard.y) * p + Math.sin(Math.PI * p) * 10;
+        g.fillStyle = n.up ? `rgba(160,255,210,${0.26 * (1 - p)})` : `rgba(255,150,160,${0.22 * (1 - p)})`;
+        g.beginPath(); g.arc(px, py, 1.3, 0, 7); g.fill();
+      }
+    });
+  }
+
+  // 工位上的小人：默认站定不动。只有本工位来了新数据（或本工位出了事件）才走一步，
+  // 走完一小段就回原位 —— 位移必须由真实数据触发，不许自己溜达。
+  // dtc 用真实帧间隔（秒）。原来钳在 0.06，低帧率时小人只有约 1/8 速度、看起来"走不动"；
+  // 现在按真实时间推进，30~60fps 下速度一致，被遮挡掉帧时也不会慢成爬。
+  const dtc = Math.min(0.25, Math.max(0.001, t - (lastCharT || t)));
+  lastCharT = t;
+  CHARS.forEach((ch, i) => {
+    const c = A2.cards[ch.id];
+    if(!c || c.right < 0 || c.top > H) return;
+    ch.card = c;
+    ch.home = { x: c.right - 24, y: c.bottom - 14 };
+    if(!ch.p) ch.p = { x: ch.home.x, y: ch.home.y, tx: ch.home.x, ty: ch.home.y,
+                       wait: 0, last: t };
+
+    const stx = (S && S.stations) ? S.stations[ch.id] : null;
+    if(ch.go){                                        // 本工位出了新事件 → 走一步去看（只走这么一次）
+      ch.go = false;
+      const span = Math.max(0, c.right - c.left - 62);
+      const hsh = (ch.id.charCodeAt(0) + ch.id.charCodeAt(1) * 7) % 100 / 100;
+      ch.p.tx = c.left + 30 + span * hsh;
+      ch.p.ty = c.bottom - 14;
+      ch.p.wait = 0;
+    }
+
+    const dist = Math.hypot(ch.p.tx - ch.p.x, ch.p.ty - ch.p.y);
+    if(dist < 1.5){
+      ch.p.x = ch.p.tx; ch.p.y = ch.p.ty;
+      ch.walk = 0;
+      ch.p.wait -= dtc;
+      if(ch.p.wait <= 0){
+        if(Math.hypot(ch.p.tx - ch.home.x, ch.p.ty - ch.home.y) > 3){
+          ch.p.tx = ch.home.x; ch.p.ty = ch.home.y;   // 回原位（不是随机换点）
+        }else{
+          ch.p.wait = 0.6;                            // 已在家，站着等下一次数据
+        }
+      }
+    } else {
+      const spd = 32;
+      ch.p.x += (ch.p.tx - ch.p.x) / dist * spd * dtc;
+      ch.p.y += (ch.p.ty - ch.p.y) / dist * spd * dtc;
+      ch.walk = 1;
+      if(dist < 2) ch.p.wait = 1.1;                   // 到点后停一下再回去
+    }
+    ch.px = ch.p.x; ch.py = ch.p.y;
+    const mood = ch.walk ? 'walk' : charMood(ch.id, t);
+    drawChar(ch.px, ch.py, ch, t, i, mood);
+  });
+  placeCharButtons(CHARS);
+
+  // 奔跑残影：躯干拖影
+  ghosts.forEach(q => {
+    const k = q.p;
+    g.save();
+    g.globalAlpha = (1 - k) * 0.32;
+    g.translate(q.x, q.y);
+    g.rotate(q.ang);
+    g.fillStyle = 'rgba(90,255,180,.9)';
+    g.beginPath();
+    if(g.roundRect) g.roundRect(-24, -6, 48, 12, 6); else g.rect(-24, -6, 48, 12);
+    g.fill();
+    g.restore();
+  });
+
+  // 告警环：红色脉冲从被报警的工位扩散
+  alerts.forEach(a => {
+    const p = a.p, r = 10 + p * 150;
+    g.strokeStyle = `rgba(255,70,100,${(1 - p) * 0.75})`;
+    g.lineWidth = 2 - p;
+    g.beginPath(); g.arc(a.x, a.y, r, 0, 7); g.stroke();
+    g.strokeStyle = `rgba(255,140,90,${(1 - p) * 0.45})`;
+    g.beginPath(); g.arc(a.x, a.y, r * 0.72, 0, 7); g.stroke();
+  });
+
+  // 落地/落脚：脚踩到数值行时留一道短横（空中的脚不画）
+  rowPings.forEach(r => {
+    const p = r.p, half = 5 + p * 5;
+    g.strokeStyle = `rgba(255,90,160,${(1 - p) * 0.55})`;
+    g.lineWidth = 1.4 - p * 0.6;
+    g.beginPath(); g.moveTo(r.x - half, r.y + 3); g.lineTo(r.x + half, r.y + 3); g.stroke();
+  });
+
+  rings.forEach(r => {
+    g.strokeStyle = `rgba(255,90,160,${(1 - r.p) * 0.8})`;
+    g.lineWidth = 1;
+    g.beginPath(); g.arc(r.x, r.y, 2 + r.p * 11, 0, 7); g.stroke();
+  });
+
+  // 飞行残影：高速掠过时留下一串淡绿光点
+  trails.forEach(q => {
+    const k = q.p;
+    g.fillStyle = `rgba(90,255,180,${(1 - k) * 0.28})`;
+    g.beginPath(); g.arc(q.x, q.y, 2.5 * (1 - k) + 0.6, 0, 7); g.fill();
+  });
+
+  // 事件丝：被事件点亮的腿把丝拉回工位
+  legs.forEach(leg => {
+    if(leg.link <= 0 || !leg.whoAnchor || !linesOn) return;
+    const F = stepPos(leg);
+    g.strokeStyle = `rgba(120,240,255,${leg.link * 0.30})`;
+    g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(F.x, F.y);
+    g.lineTo(leg.whoAnchor.x, leg.whoAnchor.y);
+    g.stroke();
+  });
+
+  const joints = [], feet = [];
+  const flyL = (HUB.fly || 0) * 14;   // 飞行时整只脚离地
+  // 同一时刻只给"最新读到的两条"标注，否则 12 条腿各写一句会把画面糊成一片
+  const newestGrab = legs.map(l => l.grabT || 0).sort((a, b) => b - a).slice(0, 2);
+  legs.forEach((leg, i) => {
+    const raw = stepPos(leg);
+    const F = { x: raw.x, y: raw.y - flyL };
+    feet.push({ x: F.x, y: F.y, up: leg.stepping, hot: leg.hot });
+    const pts = chainPts(HUB, F, leg);
+    g.beginPath(); g.moveTo(pts[0].x, pts[0].y);
+    for(let k = 1; k < pts.length; k++) g.lineTo(pts[k].x, pts[k].y);
+    // 双腿交替配色：一青一暖（视频里就是橘/粉/青混着）
+    const warm = i % 3 === 1;
+    g.strokeStyle = warm
+      ? `rgba(255,170,90,${0.08 + leg.hot * 0.45})`
+      : `rgba(120,240,255,${0.08 + leg.hot * 0.45})`;
+    g.lineWidth = 2.2 + leg.hot * 1.6; g.stroke();
+    g.strokeStyle = warm
+      ? `rgba(255,214,150,${0.85 + leg.hot * 0.15})`
+      : `rgba(170,250,255,${0.85 + leg.hot * 0.15})`;
+    g.lineWidth = 0.8 + leg.hot * 0.4; g.stroke();
+    // 这条腿刚读到一条值：整条腿亮一下，并在脚尖旁写出"读到了什么"——触角是采集器，不是装饰
+    const ga = leg.grabT ? Math.max(0, 1 - (t - leg.grabT) / 1.1) : 0;
+    if(ga > 0.02 && leg.grab){
+      g.strokeStyle = warm ? `rgba(255,240,190,${0.85 * ga})` : `rgba(200,255,255,${0.85 * ga})`;
+      g.lineWidth = 1.6; g.stroke();
+      if(newestGrab[0] === leg.grabT || newestGrab[1] === leg.grabT){
+        const s = leg.grab.length > 14 ? leg.grab.slice(0, 13) + '…' : leg.grab;
+        g.save();
+        g.globalAlpha = ga;
+        g.font = '10px ui-monospace, "Cascadia Mono", Consolas, monospace';
+        const tw2 = g.measureText(s).width;
+        const tx = Math.max(6, Math.min(W - 6 - tw2, F.x + 6));
+        const ty = F.y + (F.y > H - 40 ? -8 : 16);
+        g.fillStyle = 'rgba(6,16,26,.92)';
+        g.fillRect(tx - 3, ty - 10, tw2 + 6, 14);
+        g.fillStyle = 'rgba(210,255,240,.95)';
+        g.fillText(s, tx, ty);
+        g.restore();
+      }
+    }
+    for(let k = 1; k < pts.length - 1; k++) joints.push(pts[k]);
+  });
+
+  joints.forEach((j, n) => {
+    const p = 0.6 + 0.4 * Math.sin(t * 2 + n);
+    g.fillStyle = `rgba(255,90,160,${p})`;
+    g.beginPath(); g.arc(j.x, j.y, 1.1, 0, 7); g.fill();
+  });
+
+  feet.forEach((f, n) => {
+    const r = (f.up ? 1.0 : 1.8) + f.hot * 1.4;
+    const p = (f.up ? 0.45 : 0.8) + 0.2 * Math.sin(t * 2.4 + n * 1.7);
+    g.save();
+    if(!f.up || f.hot > 0.2){ g.shadowColor = 'rgba(255,61,139,.95)'; g.shadowBlur = 5 + f.hot * 6; }
+    g.fillStyle = `rgba(255,80,150,${Math.min(1, p + f.hot * 0.2)})`;
+    g.beginPath(); g.arc(f.x, f.y, r, 0, 7); g.fill();
+    g.restore();
+  });
+
+  parts.forEach(q => {
+    const k = q.p;
+    const x = q.x0 + (HUB.x - q.x0) * k;
+    const y = q.y0 + (HUB.y - q.y0) * k - Math.sin(Math.PI * k) * 7;
+    // 尾巴：三颗渐隐的点，让"数据被拖回身体"这个动作看得见
+    for(let s = 1; s <= 3; s++){
+      const kk = Math.max(0, k - s * 0.07);
+      const tx = q.x0 + (HUB.x - q.x0) * kk;
+      const ty = q.y0 + (HUB.y - q.y0) * kk - Math.sin(Math.PI * kk) * 7;
+      g.fillStyle = `rgba(120,240,255,${(0.42 - s * 0.11) * (1 - k * 0.4)})`;
+      g.beginPath(); g.arc(tx, ty, 1.1, 0, 7); g.fill();
+    }
+    g.fillStyle = `rgba(160,250,255,${1 - k * 0.45})`;
+    g.beginPath(); g.arc(x, y, 1.8 - k * 0.6, 0, 7); g.fill();
+  });
+
+  // 躯干：发光绿胶囊（视频里就是一支亮绿胶囊 + 内部高光；告警时转红）
+  const cw = 48, chh = 12, r = 6, hx = HUB.x, hy = HUB.y + (HUB.sink || 0) - flyL * 0.4;
+  const glow = HUB.glow || 0;
+  g.save();
+  g.translate(hx, hy);
+  g.rotate(HUB.ang);
+  g.shadowColor = glow > 0 ? `rgba(255,70,100,${0.45 + glow * 0.5})` : 'rgba(60,255,160,.6)';
+  g.shadowBlur = 12 + glow * 9;
+  const grd = g.createLinearGradient(-cw/2, 0, cw/2, 0);
+  if(glow > 0){
+    grd.addColorStop(0, '#ff8a9a'); grd.addColorStop(.5, '#c0203c'); grd.addColorStop(1, '#ff8a9a');
+  } else {
+    grd.addColorStop(0, '#0d5c3c'); grd.addColorStop(.42, '#33e39a');
+    grd.addColorStop(.60, '#8dffc8'); grd.addColorStop(1, '#0b6040');
+  }
+  g.fillStyle = grd;
+  g.beginPath();
+  g.moveTo(-cw/2 + r, -chh/2);
+  g.lineTo(cw/2 - r, -chh/2); g.quadraticCurveTo(cw/2, -chh/2, cw/2, -chh/2 + r);
+  g.lineTo(cw/2, chh/2 - r); g.quadraticCurveTo(cw/2, chh/2, cw/2 - r, chh/2);
+  g.lineTo(-cw/2 + r, chh/2); g.quadraticCurveTo(-cw/2, chh/2, -cw/2, chh/2 - r);
+  g.lineTo(-cw/2, -chh/2 + r); g.quadraticCurveTo(-cw/2, -chh/2, -cw/2 + r, -chh/2);
+  g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(190,255,225,.5)'; g.lineWidth = 0.8; g.stroke();
+  g.fillStyle = 'rgba(235,255,245,.8)';   // 内部高光
+  g.beginPath(); g.ellipse(-3, 0, 7.5, 2.6, 0, 0, 7); g.fill();
+  // 仪表：左端一颗发光圆点 + 两条读数横线（视频里躯干内部就是这个）
+  g.fillStyle = glow > 0 ? '#ffd8de' : '#a9ffe0';
+  g.shadowColor = glow > 0 ? 'rgba(255,80,110,.95)' : 'rgba(120,255,210,.95)';
+  g.shadowBlur = 6;
+  g.beginPath(); g.arc(-cw/2 + 7, 0, 2.3, 0, 7); g.fill();
+  g.shadowBlur = 0;
+  g.fillStyle = 'rgba(150,235,255,.32)';
+  g.fillStyle = 'rgba(4,32,22,.62)';      // 深色读数条：绿胶囊上才看得见
+  g.fillRect(-cw/2 + 13, -2.9, 20, 1.4);
+  g.fillRect(-cw/2 + 13, 1.3, 13, 1.4);
+  g.restore();
+
+  // 气泡先排位（下面画随身标签时要给它让位），真正绘制放在标签之后，保证气泡在最上层
+  // 10px / 17px 高：面板行距约 24px，气泡必须压到行高以内才可能塞进两行之间。
+  g.font = '10px ui-monospace, "Cascadia Mono", Consolas, monospace';
+  let bubBox = null;
+  if(bub.alpha > 0.03){
+    const tw = g.measureText(bub.text).width, bw = tw + 14, bh = 17;
+    // 面板很密，气泡居中放几乎必然压到某块数据井 —— 优先贴到躯干左/右侧，
+    // 让开面板右端的数值列（details 就是那些数值行的锚点）。
+    const bxL = () => Math.max(8, Math.min(W - bw - 8, hx - bw - 14));
+    const bxR = () => Math.max(8, Math.min(W - bw - 8, hx + 14));
+    const bx = () => bxL();
+    // 只避"真的会被挡住的东西"：整块面板不算 —— 气泡本来就浮在面板上，
+    // 拿 #factor-body 这种大矩形当障碍，会让所有候选位全被判死，最后强压到数字上。
+    const hitsWell = (x, y) => {
+      for(const b of (A2.blocks || [])){        // 链路条 / 巡检条 / KPI 带：压住就是挡判断
+        if(x + bw > b.x0 + 2 && x < b.x1 - 2 && y + bh > b.y0 + 2 && y < b.y1 - 2) return b;
+      }
+      return null;
+    };
+    // 数值行（面板右端的读数）单独判一次：压住数字比压住面板底更糟
+    const hitsNum = (x, y) => {
+      for(const d of (A2.details || [])){
+        if(d.x > x - 4 && d.x < x + bw + 4 && d.y > y - 3 && d.y < y + bh + 3) return true;
+      }
+      return false;
+    };
+    const fits = (y) => (y >= 8 && y + bh <= H - 8);
+    const hostWell = hitsWell(hx - 1, hy - 1) || null;      // 躯干此刻压在哪块面板上
+    const places = [];
+    for(const y of [hy - 44, hy + 26]){
+      places.push({ x: bxL(), y: y }, { x: bxR(), y: y });
+    }
+    if(hostWell){
+      for(const x of [bxL(), bxR()]){
+        places.push({ x: x, y: hostWell.y0 - bh - 7 }, { x: x, y: hostWell.y1 + 7 });
+      }
+    }
+    for(const b of (A2.blocks || [])){                     // 往禁压区上方让
+      for(const x of [bxL(), bxR()]) places.push({ x: x, y: b.y0 - bh - 7 });
+    }
+    let bubX = null, by = null;
+    for(const pl of places){
+      if(!fits(pl.y)) continue;
+      if(hitsWell(pl.x, pl.y)) continue;
+      if(hitsNum(pl.x, pl.y)) continue;
+      bubX = pl.x; by = pl.y; break;
+    }
+    if(by == null){
+      // 兜底不能"硬放回躯干上方" —— 那样会直接压在面板数字上。
+      // 上下各扫一段，挑第一个既不压数据井、也不压禁压区的位；实在找不到才退回上方。
+      for(let dy = 26; dy <= 150; dy += 12){
+        const up = hy - 44 - dy, dn = hy + 26 + dy;
+        for(const x of [bxL(), bxR()]){
+          if(bubX != null) break;
+          if(fits(up) && !hitsWell(x, up) && !hitsNum(x, up)){ bubX = x; by = up; }
+          else if(fits(dn) && !hitsWell(x, dn) && !hitsNum(x, dn)){ bubX = x; by = dn; }
+        }
+        if(bubX != null) break;
+      }
+    }
+    // 找不到干净位就干脆不画气泡 —— 这个页面每 22px 就有一列数字，硬塞一定会遮读数。
+    // 台词不会丢，下面随身标签会接着它显示（标签窄得多）。
+    bubBox = (by == null) ? null : { x: (bubX == null ? bxL() : bubX), y: by, w: bw, h: bh };
+
+  }
+
+  // 随身标签：放在躯干下方；气泡如果翻到下面了，就再往下让一格，两者不叠
+  {
+    // 气泡没找到干净位置时，台词改由标签承载（标签窄、能塞进列缝）
+    const say = (bubBox || bub.alpha <= 0.03) ? null : bub.text;
+    let tag = (HUB.fly || 0) > 0.5 ? '飞行·收腿'
+              : `取数 ${tele.grabs || 0} · ${tele.coverage || '0/0'}`;
+    if(say){ tag = say.length > 26 ? say.slice(0, 25) + '…' : say; }
+    g.save();
+    g.font = '10px ui-monospace, "Cascadia Mono", Consolas, monospace';
+    const tw = g.measureText(tag).width, bw = tw + 12, bh = 15;
+    const shifted = (bubBox && bubBox.y > hy) ? (bubBox.y + bubBox.h + 6) : (hy + 16);
+    const lx = Math.max(8, Math.min(W - bw - 8, hx + 26)), ly = shifted;
+    if(ly + bh < H - 8){
+      g.strokeStyle = 'rgba(120,240,255,.38)'; g.lineWidth = .8;
+      g.beginPath(); g.moveTo(hx + 10, hy + 6); g.lineTo(lx, ly); g.stroke();
+      g.fillStyle = 'rgba(9,14,24,.94)'; g.fillRect(lx, ly, bw, bh);
+      g.strokeStyle = 'rgba(255,61,139,.45)'; g.lineWidth = .8; g.strokeRect(lx, ly, bw, bh);
+      g.fillStyle = 'rgba(180,240,252,.95)';
+      g.fillText(tag, lx + 6, ly + 10.5);
+    }
+    g.restore();
+  }
+
+  // 气泡台词（内容来自真实状态）
+  // 位置规则：默认在躯干上方；上方被面板挡住/出界时翻到下方；上下都在面板里（躯干正压在面板上沿）
+  // 就贴到那块面板的外面一行 —— 原来固定写死 hy-44，蜘蛛在面板顶边时气泡会压住面板小标题。
+  if(bubBox){
+    const by = bubBox.y, bw = bubBox.w, bh = bubBox.h;
+    g.save();
+    g.globalAlpha = bub.alpha;
+    g.fillStyle = 'rgba(6,14,26,.94)';
+    g.strokeStyle = 'rgba(120,240,255,.45)';
+    g.lineWidth = 1;
+    g.beginPath();
+    if(g.roundRect) g.roundRect(bubBox.x, by, bw, bh, 5); else g.rect(bubBox.x, by, bw, bh);
+    g.fill(); g.stroke();
+    // 小尾巴只朝躯干方向：气泡在躯干上方就朝下指，在下方就朝上指
+    const tailUp = by > hy;
+    const tx = Math.max(bubBox.x + 7, Math.min(bubBox.x + bw - 7, hx));   // 尾巴根部落在气泡边上
+    g.beginPath();
+    g.moveTo(tx - 4, by + (tailUp ? 0 : bh)); g.lineTo(hx, by + (tailUp ? -6 : bh + 6));
+    g.lineTo(tx + 4, by + (tailUp ? 0 : bh));
+    g.fillStyle = 'rgba(6,14,26,.94)'; g.fill();
+    g.fillStyle = 'rgba(175,240,255,.92)';
+    g.fillText(bub.text, bubBox.x + 7, by + 12);
+    g.restore();
+  }
+}
+
+/* 动画主循环：rAF 为主；窗口被遮挡时 Chrome 会停掉 rAF（visibilityState 仍是 visible），
+   动画会"假死"，所以 ①挂看门狗补帧 ②按固定 33ms 步长补算物理，
+   否则低帧率时 dt 被钳在 0.05，整只蜘蛛会变慢（走过 600ms 只挪 50ms）。 */
+let lastFrameAt = 0, rafId = 0, watchdogId = 0, lastT = 0;
+function frame(now){
+  lastFrameAt = performance.now();
+  const t = now / 1000;
+  if(!lastT) lastT = t;
+  const gap = Math.min(0.6, Math.max(0, t - lastT));
+  lastT = t;
+  const steps = Math.max(1, Math.ceil(gap / 0.033));
+  try{
+    for(let i = 1; i <= steps; i++) tick(t - gap + gap * (i / steps));
+    paint(t);
+  }
+  catch(e){ window.__err = window.__err || []; if(window.__err.length < 20) window.__err.push(String(e)); }
+  rafId = requestAnimationFrame(frame);
+  clearTimeout(watchdogId);
+  watchdogId = setTimeout(() => {
+    if(performance.now() - lastFrameAt > 500){
+      cancelAnimationFrame(rafId);
+      frame(performance.now());
+    }
+  }, 600);
+}
+frame(performance.now());
+
+// 同票定时复检：每 30 秒把当前这只票重算一遍，和上一份快照对比。
+// 这样"变化检测"不用靠用户手动点第二次看盘；静止盘面下也不会硬造台词（无差异就不出）。
+setInterval(() => {
+  const fx = window.__fx;
+  if(fx && fx.code) loadFactors(fx.code, true);
+}, 30000);
+
+
+/* ---------------- 调度 ---------------- */
+function renderAll(){ renderKPI(); renderStations(); renderChain(); renderFeed(); renderPositions(); renderLeads(); renderVerdict(); }
+
+async function pull(){
+  try{
+    S = await api('/api/desk/state');
+    const et = (S.events && S.events[0]) ? (S.events[0].t + '#' + S.events.length) : null;
+    if(et && et !== lastEvtT){
+      lastEvtT = et;
+      (S.events || []).slice(0, 4).forEach(e => pulseLeg(e.who, e.kind === 'alert'));
+      // 新事件 → 蜘蛛排队去那个工位、小人走一步去看（真实事件驱动，不是定时瞎走）
+      (S.events || []).slice(0, 3).reverse().forEach(e => {
+        queueStation(e.who, '事件');
+        const c = CHARS.find(x => x.id === e.who);
+        // 同一条事件不重复触发；同一小人 10 秒内最多动一次（避免看起来"一直乱跑"）
+        if(c && e.text && c.lastTxt !== e.text && (performance.now() / 1000 - (c.lastGo || -99)) > 10){
+          c.lastTxt = e.text; c.lastGo = performance.now() / 1000; c.go = true;
+        }
+      });
+      // 事件 → 小人动作：成交放烟花、否决盖章、告警举红牌、待人工举手
+      const tNow = performance.now() / 1000;
+      (S.events || []).slice(0, 6).forEach(e => {
+        if(!e || !e.who || !CHARS.some(c => c.id === e.who)) return;
+        const txt = String(e.text || '');
+        let type = null;
+        if(txt.includes('成交')) type = 'fire';
+        else if(txt.includes('否')) type = 'stamp';
+        else if(e.kind === 'alert') type = 'raise';
+        else if(txt.includes('待人工') || txt.includes('STAGED')) type = 'raise';
+        else if(e.kind === 'ok') type = 'typing';
+        if(type){
+          charFx[e.who] = { type, at: tNow };
+          charFxN++;
+        }
+      });
+      beep((S.events && S.events[0] && S.events[0].kind) || 'info');
+      anchorsCache = null;
+    }
+    renderAll();
+    if(!curCode && S.leads && S.leads.length){ curCode = S.leads[0].code; loadChart(); }
+  }catch(e){ toast(e.message); }
+}
+
+$('btn-run').onclick = async ()=>{
+  $('btn-run').disabled = true; $('btn-run').textContent='运行中…';
+  try{ S = await api('/api/desk/run',{method:'POST'}); renderAll(); toast('完成一轮'); }
+  catch(e){ toast(e.message); }
+  finally{ $('btn-run').disabled=false; $('btn-run').textContent='跑一轮'; }
+};
+$('btn-halt').onclick = async ()=>{
+  try{
+    if(S && S.halt){
+      S = await api('/api/desk/resume',{method:'POST'}); renderAll(); toast('已恢复运行'); return;
+    }
+    if(!confirm('STOP ALL：停止扫描与开仓，并立即平掉可平仓位（T+1 的明日再平）。确认？')) return;
+    S = await api('/api/desk/halt',{method:'POST'}); renderAll(); toast('已停摆');
+  }catch(e){ toast(e.message); }
+};
+$('btn-alert').onclick = ()=>{
+  pulseLeg('RISK', true);
+  charFx.RISK = { type: 'raise', at: performance.now() / 1000 }; charFxN++;   // 小人举红牌
+  toast('告警演练：RISK（不动账本，只走视觉）');
+};
+/* 输入代码直接看盘：6 位数字，回车或点「看盘」都行 */
+function jumpToCode(raw){
+  const code = String(raw || '').replace(/\D/g, '').slice(0, 6);
+  if(code.length !== 6){ toast('请输入 6 位股票代码'); return; }
+  curCode = code;
+  loadChart();
+  const inp = $('code-in'); if(inp) inp.blur();
+}
+$('btn-code').onclick = ()=> jumpToCode($('code-in').value);
+$('code-in').onkeydown = e => {
+  if(e.key === 'Enter'){ e.preventDefault(); jumpToCode(e.currentTarget.value); }
+};
+
+$('btn-snd').onclick = ()=>{
+  if(!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  sndOn = !sndOn;
+  $('btn-snd').textContent = sndOn ? '音效 开' : '音效 关';
+  toast(sndOn ? '音效已开（事件来了会有短提示音）' : '音效已关');
+  if(sndOn) beep('info');
+};
+$('btn-lines').onclick = ()=>{
+  linesOn = !linesOn;
+  $('btn-lines').textContent = linesOn ? '装饰线 开' : '装饰线 关';
+  flowCache.at = 0;
+  toast(linesOn ? '装饰线已开（资金流网络 + 事件丝）' : '装饰线已关，只留腿和读数');
+};
+// 滚动即刻失效锚点缓存：画布 fixed、锚点视口坐标，滚了就作废。
+// 60ms 节流，避免滚动时每帧重建上百个 getBoundingClientRect 卡顿。
+addEventListener('scroll', ()=>{
+  const n = performance.now();
+  regripT = n / 1000;                       // 让脚立刻抓新位置（paint 里读这个）
+  if(n - scrollInvAt > 60){ scrollInvAt = n; anchorsCache = null; flowCache.at = 0; }
+}, { passive: true });
+$('btn-reset').onclick = async ()=>{
+  if(!confirm('重置交易室？持仓与流水将清空。')) return;
+  try{ S = await api('/api/desk/reset'); curCode=null; renderAll(); chart.clear(); toast('已重置'); }
+  catch(e){ toast(e.message); }
+};
+document.querySelectorAll('#ch-tabs .tl').forEach(t=>{
+  t.onclick=()=>{ document.querySelectorAll('#ch-tabs .tl').forEach(x=>x.classList.remove('on'));
+    t.classList.add('on'); curTab=t.dataset.t; loadChart(); };
+});
+window.addEventListener('resize',()=>chart.resize());
+
+pull();
+setInterval(pull, 5000);
+setInterval(()=>{ if(curTab==='minute') loadChart(); }, 30000);
+</script>
+</body>
+</html>
